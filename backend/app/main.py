@@ -6,8 +6,11 @@ Vercel's Python runtime looks for a module-level ``FastAPI`` instance named
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.engine.url import make_url
 
 from app.config import settings
+from app.db import engine
 from app.routers import (
     forms_router,
     public_router,
@@ -55,5 +58,30 @@ def root() -> dict[str, str]:
 
 
 @app.get("/api/health", tags=["meta"])
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, object]:
+    """Liveness plus a database probe.
+
+    A deployed function can import cleanly and still be unable to reach its
+    database — wrong environment variable name, missing credential, unreachable
+    host. Reporting which dialect is configured, whether a token was supplied,
+    and the class of any connection failure turns that from a bare 500 into
+    something diagnosable without shipping a debug build.
+
+    Deliberately coarse: it never returns the credential, the host, or the
+    driver's error text.
+    """
+    url = make_url(settings.database_url)
+    database: dict[str, object] = {
+        "dialect": url.drivername,
+        "auth_token_configured": bool(settings.database_auth_token),
+    }
+
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        database["status"] = "ok"
+    except Exception as error:  # noqa: BLE001 — the class is the whole signal
+        database["status"] = "unreachable"
+        database["error"] = type(error).__name__
+
+    return {"status": "ok", "database": database}
