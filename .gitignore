@@ -13,5 +13,9 @@ __pycache__/
 .vercel
 CLAUDE.md
 
-# local visual-check scripts, not part of the deliverable
-frontend/*.mjs
+# Local visual-check scripts, not part of the deliverable. Named explicitly:
+# a frontend/*.mjs glob also swallows postcss.config.mjs and eslint.config.mjs,
+# and a build without the PostCSS config silently ships with no Tailwind.
+frontend/shot.mjs
+frontend/dbg.mjs
+frontend/t.mjs
