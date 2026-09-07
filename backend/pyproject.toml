@@ -13,12 +13,11 @@ dependencies = [
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
     "python-dotenv>=1.0.1",
+    # Not optional: production runs on Turso, and the deployment resolves this
+    # file rather than requirements.txt — an extra would simply be skipped, and
+    # the app would die at import with "No module named 'sqlalchemy_libsql'".
+    "sqlalchemy-libsql>=0.1.0",
 ]
-
-[project.optional-dependencies]
-# Needed whenever DATABASE_URL points at Turso — including when running the
-# migration or the seed against production from a workstation.
-libsql = ["sqlalchemy-libsql>=0.1.0"]
 
 [build-system]
 requires = ["hatchling"]

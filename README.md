@@ -81,7 +81,7 @@ Two processes: the API on `:8000`, the web app on `:3000`.
 
 ```bash
 cd backend
-uv venv --python 3.12 && uv pip install -e ".[libsql]"
+uv venv --python 3.12 && uv pip install -e .
 cp .env.example .env                    # DATABASE_URL=sqlite:///./typeform.db
 .venv/bin/alembic upgrade head          # create the schema
 .venv/bin/python -m app.seed            # idempotent demo data
@@ -105,7 +105,7 @@ Open <http://localhost:3000>. The seeded forms are live at
 ### Checks
 
 ```bash
-cd backend  && .venv/bin/python -m pytest tests   # 11 API tests
+cd backend  && .venv/bin/python -m pytest tests   # 13 tests
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -763,7 +763,7 @@ Set `CORS_ORIGINS` on the backend project to the deployed frontend origin plus
 
 `backend/tests/test_api.py` runs the API end to end against a throwaway SQLite
 file, injected through the `get_db` dependency and configured with
-`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Eleven tests, each covering one
+`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Thirteen tests, each covering one
 invariant the design rests on rather than one function:
 
 | Test | Invariant |
@@ -779,6 +779,8 @@ invariant the design rests on rather than one function:
 | `test_summary_aggregates_and_partials_lower_the_completion_rate` | AVG/MIN/MAX are right and a partial drops the rate to 0.75. |
 | `test_choice_counts_come_out_per_option` | Multi-select counts land on the right options. |
 | `test_deleting_a_form_that_has_responses_cascades` | Deleting a form with collected answers succeeds and leaves no orphans. |
+| `test_requirements_matches_pyproject_dependencies` | The two dependency lists cannot drift apart. |
+| `test_libsql_driver_is_a_hard_dependency` | The Turso driver stays a hard dependency, not an optional extra. |
 
 The frontend is covered by `tsc --noEmit`, ESLint (including the React hooks
 rules) and a production build, all clean.

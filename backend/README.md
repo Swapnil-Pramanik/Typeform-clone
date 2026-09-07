@@ -9,5 +9,5 @@ cp .env.example .env
 .venv/bin/alembic upgrade head
 .venv/bin/python -m app.seed
 .venv/bin/uvicorn app.main:app --reload --port 8000
-.venv/bin/python -m pytest tests    # 11 tests over the schema's invariants
+.venv/bin/python -m pytest tests    # 13 tests over the schema's invariants
 ```
