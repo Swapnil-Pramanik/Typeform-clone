@@ -45,12 +45,16 @@ conversational flow.
 | | Autosave on a 600ms debounce, with a Saving…/Saved indicator | Built |
 | | Change a block's answer type in place | Built |
 | | Add-element modal with the real product's block catalogue | Built |
+| | Welcome screens: add, edit, button label, estimated time | Built |
+| | Per-form theme — question colour, background, font | Built |
+| | **Logic jumps** — branch on an answer; loops refused at authoring time | Built |
 | **Publishing** | Publish / unpublish; slug minted once and kept forever | Built |
 | | Public fill page needing no account | Built |
 | **Respondent flow** | One question at a time, directional enter/exit transitions | Built |
 | | Keyboard-only completion: Enter, arrows, A–Z, 1–9, Y/N | Built |
 | | Inline client validation, re-validated server-side | Built |
 | | Optional welcome screen; endings rendered from data | Built |
+| | The form's own theme applied to the live experience | Built |
 | | `prefers-reduced-motion` honoured | Built |
 | **Results** | Paginated responses table, single-response view | Built |
 | | Per-question aggregates computed by the database | Built |
@@ -59,15 +63,18 @@ conversational flow.
 | **Dashboard** | List/grid views, search, sort, row menu, delete confirmation | Built |
 | | Row thumbnails tinted by each form's own theme colour | Built |
 | | Dark mode | Built |
-| **Coming Soon** | Logic jumps, integrations, workflow, embed, team features | Placeheld |
+| **Coming Soon** | Integrations, workflow, embed, team features, file upload | Placeheld |
 
 The last row is deliberate. Every unbuilt area has a styled panel where the real
 product puts the feature, so its absence reads as a scope decision rather than as
 an unfinished screen. See §14.
 
-**Seeded demo data** — `python -m app.seed` creates two published forms covering
-all eight question types, one draft, and 17 responses including two partials, so
-the completion rate and the summary charts have something real to show.
+**Seeded demo data** — `python -m app.seed` creates three published forms and a
+draft: a customer-feedback and an event-registration form covering all eight
+question types between them, plus **Support triage**, a branching demo whose
+first answer decides whether the next question is asked at all. 19 responses
+including two partials, so the completion rate and the summary charts have
+something real to show, and both branches already have a submission.
 
 ---
 
@@ -107,7 +114,7 @@ Open <http://localhost:3000>. The seeded forms are live at
 ### Checks
 
 ```bash
-cd backend  && .venv/bin/python -m pytest tests   # 21 tests
+cd backend  && .venv/bin/python -m pytest tests   # 31 tests
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -161,7 +168,8 @@ library, a component library, a monorepo tool.
 │                               │                                       │
 │                               ▼                                       │
 │   services/forms.py   services/questions.py   services/responses.py   │
-│                       services/validation.py  ← the rules, stated once│
+│                       services/validation.py  ← answer rules, stated once│
+│                       services/logic.py       ← branching, stated once  │
 │                               │                                       │
 │                               ▼                                       │
 │                    models/ (SQLAlchemy) → db.py → SQLite / libSQL     │
@@ -225,6 +233,7 @@ drift from what a respondent sees.
 │       │   ├── forms.py             # CRUD, publish, unpublish, duplicate, slugs
 │       │   ├── questions.py         # append, edit, soft delete, reorder
 │       │   ├── responses.py         # submit, list, summarize, CSV export
+│       │   ├── logic.py             # branching: next step, path, cycle check
 │       │   └── validation.py        # validate_answer — the canonical rules
 │       └── routers/
 │           ├── deps.py              # session dependency + error translation
@@ -278,6 +287,7 @@ drift from what a respondent sees.
         │   │   ├── EditableChoiceList.tsx
         │   │   ├── SettingsPanel.tsx         # right panel, per block
         │   │   ├── DesignSettings.tsx        # right panel, per form: colour/bg/font
+        │   │   ├── LogicPanel.tsx            # the branching rule editor
         │   │   ├── AddElementModal.tsx
         │   │   ├── SaveIndicator.tsx
         │   │   └── Toggle.tsx
@@ -297,6 +307,7 @@ drift from what a respondent sees.
         │   ├── queries.ts                    # TanStack hooks + query keys
         │   ├── questionTypes.tsx             # block catalogue + groups
         │   ├── formTheme.ts                  # a form's theme as token overrides
+        │   ├── logic.ts                      # mirror of services/logic.py
         │   ├── creator.ts                    # the single seeded creator
         │   ├── errors.ts                     # one place that names a failure
         │   ├── hooks.ts                      # hotkeys, debounce, media queries
@@ -324,6 +335,7 @@ drift from what a respondent sees.
 | `services/forms.py` | `list_forms` (counts as correlated subqueries — one round trip), `publish_form`, `unpublish_form`, `duplicate_form`, `get_published_form`, slug minting. |
 | `services/questions.py` | `add_question` at `max(position)+1`, `update_question` (type changes in place), `delete_question` (soft), `reorder_questions`. |
 | `services/responses.py` | `submit_response` (validate → snapshot → store), `summarize_form` (aggregates batched one query per *kind* of question, not per question), `export_responses_csv` (streaming generator). |
+| `services/logic.py` | `next_question_id`, `path_taken`, `assert_no_cycles`. The branching rules, stated once and mirrored by `lib/logic.ts`. |
 | `services/validation.py` | `validate_answer(question, raw) -> TypedValue`. The rules, written once, in a docstring the TypeScript mirror points back to. |
 | `routers/deps.py` | The session dependency and the three exception→HTTP translations. |
 | `routers/*.py` | Parse, call a service, return. |
@@ -427,6 +439,17 @@ CREATE TABLE questions (
   deleted_at   DATETIME                -- soft delete — see decision 2
 );
 CREATE INDEX ix_questions_form_position ON questions (form_id, position);
+
+CREATE TABLE question_rules (
+  id                  INTEGER PRIMARY KEY,
+  question_id         INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  position            INTEGER NOT NULL,      -- evaluated in order, first match wins
+  operator            VARCHAR(16) NOT NULL,  -- is | is_not | greater_than
+                                             -- | less_than | answered | not_answered
+  value               TEXT,                  -- JSON: option ID, bool, number or string
+  target_question_id  INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE
+);
+CREATE INDEX ix_question_rules_question ON question_rules (question_id, position);
 
 CREATE TABLE question_options (
   id           INTEGER PRIMARY KEY,
@@ -560,6 +583,7 @@ Interactive docs at `/docs` when the backend is running.
 | `POST` | `/api/forms/{id}/unpublish` | Back to draft. **The slug is kept**, so a shared link survives republishing. |
 | `POST` | `/api/forms/{id}/questions` | Append at `max(position) + 1`. |
 | `PATCH` | `/api/questions/{id}` | Title, description, required, settings, options, **type**. |
+| `PUT` | `/api/questions/{id}/rules` | Replace the branching rules. `400` if the set would loop. |
 | `DELETE` | `/api/questions/{id}` | Soft delete. |
 | `PUT` | `/api/forms/{id}/questions/order` | Full ordered ID array → rewrite every position. |
 | `GET` | `/api/forms/{id}/responses` | Paginated submissions (`page`, `page_size`). |
@@ -814,7 +838,7 @@ entirely — that origin would then be allowed to call this API from a browser.
 
 `backend/tests/test_api.py` runs the API end to end against a throwaway SQLite
 file, injected through the `get_db` dependency and configured with
-`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Twenty-one tests, each covering one
+`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Thirty-one tests, each covering one
 invariant the design rests on rather than one function:
 
 | Test | Invariant |
@@ -835,6 +859,10 @@ invariant the design rests on rather than one function:
 | `test_settings_tolerate_pasted_whitespace_and_quotes` | Env vars survive being pasted into a deployment dashboard. |
 | `test_our_own_origins_are_allowed` | Production, preview and localhost origins all pass CORS. |
 | `test_unrelated_origins_are_blocked` | An identically-named deployment owned by someone else does not. |
+| `test_a_skipped_required_question_does_not_block_submission` | **Branching's central risk.** A required question on a path never taken cannot block a submit. |
+| `test_a_required_question_on_the_taken_branch_still_blocks` | …and one on the path taken still does. |
+| `test_a_loop_is_refused_when_the_rule_is_written` | A rule set that cycles is rejected, and leaves nothing behind. |
+| `test_a_rule_pointing_at_a_deleted_question_is_ignored` | Soft-deleting a target cannot strand a respondent. |
 
 The frontend is covered by `tsc --noEmit`, ESLint (including the React hooks
 rules) and a production build, all clean.
@@ -919,6 +947,19 @@ union rather than a question ID, and adding one is a form patch. Endings went th
 other way — they *are* question rows — because a form may have several and they
 need positions; a form has at most one welcome screen.
 
-**11. Theme colours are stored per form but not yet editable.** `forms.theme`
-holds JSON and the seed populates it; a colour picker in the settings panel is
-the remaining work, and the schema needs no change for it.
+**11. Branching is per-question rules, not a flow-graph editor.** A rule is one
+row: an operator, a compared value and a target. They evaluate in order and the
+first match wins, so the list *is* the precedence — nothing to learn beyond
+reading top to bottom. That covers skip-ahead and simple forks; what it does not
+model is a rule depending on *several* earlier answers, or arithmetic over them.
+Cycles are refused when a rule is written and again at publish, because deleting
+or reordering blocks can break a set that was valid when authored.
+
+**12. A form's theme is three tokens, not a stylesheet.** `forms.theme` holds a
+question colour, a background and a font, and `lib/formTheme.ts` turns them into
+overrides of the same `--tf-*` variables every component already reads — which is
+why a theme repaints the whole respondent flow without a single component knowing
+themes exist. A dark background derives its own text, hairline and answer-card
+colours from the background's luminance, because swapping only `--tf-bg` would
+render the form black on black. Per-question styling, background images and font
+uploads are not modelled.
