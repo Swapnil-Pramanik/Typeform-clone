@@ -92,12 +92,8 @@ export function QuestionList({
   };
 
   return (
-    <aside className="tf-scrollbar flex w-[268px] shrink-0 flex-col gap-5 overflow-y-auto border-r-2 border-groove bg-rail p-3">
-      <Group
-        label="Welcome"
-        count={welcome ? 1 : 0}
-        onAdd={onAddWelcome}
-      >
+    <aside className="tf-scrollbar flex w-[268px] shrink-0 flex-col gap-3 overflow-y-auto border-r-2 border-groove bg-rail p-3">
+      <Group label="Welcome" onAdd={onAddWelcome}>
         {welcome ? (
           <li className="list-none">
             <button
@@ -130,7 +126,6 @@ export function QuestionList({
 
       <Group
         label="Pages"
-        count={pages.length}
         onAdd={onAddContent}
         addLabel="Add content"
       >
@@ -159,7 +154,7 @@ export function QuestionList({
         </DndContext>
       </Group>
 
-      <Group label="Endings" count={endings.length} onAdd={onAddEnding}>
+      <Group label="Endings" onAdd={onAddEnding}>
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -184,11 +179,9 @@ export function QuestionList({
           </SortableContext>
         </DndContext>
       </Group>
-      <section className="flex flex-col gap-1.5">
-        <header className="px-2 py-1">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-            Design
-          </h2>
+      <section className="flex flex-col gap-1.5 rounded-xl bg-panel p-2">
+        <header className="px-1.5 py-1">
+          <h2 className="text-[14px] text-ink">Design</h2>
         </header>
         <button
           type="button"
@@ -216,23 +209,19 @@ export function QuestionList({
 
 function Group({
   label,
-  count,
   onAdd,
   addLabel,
   children,
 }: {
   label: string;
-  count: number;
   onAdd: () => void;
   addLabel?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-1.5">
-      <header className="flex items-center justify-between px-2 py-1">
-        <h2 className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-          {label} <span className="font-normal">{count}</span>
-        </h2>
+    <section className="flex flex-col gap-1.5 rounded-xl bg-panel p-2">
+      <header className="flex items-center justify-between px-1.5 py-1">
+        <h2 className="text-[14px] text-ink">{label}</h2>
         <button
           type="button"
           onClick={onAdd}

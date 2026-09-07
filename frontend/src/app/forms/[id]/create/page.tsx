@@ -10,6 +10,7 @@
 import { use, useMemo, useState } from "react";
 
 import { AddElementModal } from "@/components/builder/AddElementModal";
+import { BuilderToolbar } from "@/components/builder/BuilderToolbar";
 import { FormShell } from "@/components/builder/FormShell";
 import { PreviewPane } from "@/components/builder/PreviewPane";
 import { DesignSettings } from "@/components/builder/DesignSettings";
@@ -146,6 +147,13 @@ export default function BuilderPage({
     <FormShell
       formId={formId}
       headerSlot={<SaveIndicator state={builder.saveState} />}
+      toolbar={
+        <BuilderToolbar
+          onAddContent={() => setAddOpen(true)}
+          onOpenDesign={() => setChosen(DESIGN)}
+          designActive={selection.kind === "design"}
+        />
+      }
     >
       {builder.isLoading ? (
         <div className="flex-1">

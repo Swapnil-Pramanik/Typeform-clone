@@ -4,15 +4,22 @@ import { useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 
 interface ToggleProps {
+  /** Announced to assistive tech. The visible label belongs to the row. */
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
-  /** Present in the panel but not wired up. Rendered off and non-interactive. */
+  /** Present in the panel but not wired up: pressing it says so. */
   comingSoon?: boolean;
   hint?: string;
 }
 
+/**
+ * The switch alone — no visible text.
+ *
+ * The settings panel is a list of labelled rows, and the row owns the label. A
+ * switch that carried its own would print it twice.
+ */
 export function Toggle({
   label,
   checked,
@@ -25,34 +32,33 @@ export function Toggle({
   const inert = disabled || comingSoon;
 
   return (
-    <label
-      className={cn(
-        "flex items-center justify-between gap-3 py-2",
-        inert && "opacity-55",
-      )}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
       title={comingSoon ? "Coming soon" : hint}
+      onClick={() => (comingSoon ? announce(label) : onChange(!checked))}
+      className={cn(
+        "relative h-[20px] w-[36px] shrink-0 rounded-full transition-colors",
+        checked ? "bg-accent" : "bg-line-strong",
+        inert && "opacity-55",
+        disabled && "cursor-not-allowed",
+      )}
     >
-      <span className="text-[13px] text-ink">{label}</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        disabled={disabled}
-        onClick={() => (comingSoon ? announce(label) : onChange(!checked))}
+      {/*
+        Anchored with `left`, not by its static position. A button centres its
+        content, so an absolutely positioned knob with `left: auto` starts from
+        that centre and the travel is added to it — which pushed the knob clean
+        outside the track.
+      */}
+      <span
         className={cn(
-          "relative h-[20px] w-[34px] shrink-0 rounded-full transition-colors",
-          checked ? "bg-accent" : "bg-line-strong",
-          inert && "cursor-not-allowed",
+          "absolute left-[2px] top-[2px] h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+          checked ? "translate-x-[16px]" : "translate-x-0",
         )}
-      >
-        <span
-          className={cn(
-            "absolute top-[2px] h-4 w-4 rounded-full bg-bg shadow transition-transform",
-            checked ? "translate-x-[16px]" : "translate-x-[2px]",
-          )}
-        />
-      </button>
-    </label>
+      />
+    </button>
   );
 }

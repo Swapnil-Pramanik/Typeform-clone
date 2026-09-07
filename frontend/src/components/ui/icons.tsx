@@ -229,6 +229,45 @@ export const SortAlpha = (p: IconProps) => (
   </Icon>
 );
 
+export const Palette = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H16a5 5 0 0 0 5-5c0-3.9-4-7-9-7Z" />
+    <circle cx="7.5" cy="11" r="1" /><circle cx="10" cy="7.5" r="1" /><circle cx="14.5" cy="7.5" r="1" />
+  </Icon>
+);
+export const Device = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M10.5 18.5h3" />
+  </Icon>
+);
+export const Play = (p: IconProps) => (
+  <Icon {...p}><path d="M7 4.5 19 12 7 19.5Z" /></Icon>
+);
+export const Accessibility = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="4.2" r="1.6" />
+    <path d="M4.5 8.2h15M12 8.5v5m0 0-3 7m3-7 3 7" />
+  </Icon>
+);
+export const Undo = (p: IconProps) => (
+  <Icon {...p}><path d="M4 9h10a5 5 0 0 1 0 10H9" /><path d="m8 5-4 4 4 4" /></Icon>
+);
+export const Translate = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3.5 5.5h8M7.5 3.5v2M9.5 5.5c0 4-3 7-6 8" /><path d="M5 9.5c1.2 2.3 3 3.7 5 4.5" />
+    <path d="m12.5 20.5 4-9 4 9M13.8 17.8h5.4" />
+  </Icon>
+);
+export const Settings = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2.5v2.2M12 19.3v2.2M21.5 12h-2.2M4.7 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9 5.3 5.3" />
+  </Icon>
+);
+export const Layers = (p: IconProps) => (
+  <Icon {...p}><path d="m12 3 8 4.5-8 4.5-8-4.5Z" /><path d="m4 12.5 8 4.5 8-4.5" /></Icon>
+);
+
 /* --- question-type glyphs ------------------------------------------------- */
 
 export const TypeShortText = (p: IconProps) => (

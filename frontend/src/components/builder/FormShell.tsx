@@ -3,9 +3,9 @@
 /**
  * The chrome shared by every form-scoped screen.
  *
- * The real product's top nav reads Content · Workflow · Connect. This build uses
- * Content · Connect · Share · Results — the same shape, with Results given a
- * home because the assignment asks for a responses view.
+ * Laid out like the real product's: a breadcrumb back to the workspace, the five
+ * nav tabs centred, and the publish/link/plans/help cluster on the right. The
+ * working area beneath is the same inset rounded shell the dashboard uses.
  */
 
 import Link from "next/link";
@@ -13,14 +13,28 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { ChevronLeft, Eye } from "@/components/ui/icons";
+import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useToast } from "@/components/ui/Toast";
+import {
+  ChevronRight,
+  Help,
+  Link as LinkIcon,
+  NavForms,
+  Play,
+} from "@/components/ui/icons";
+import { CREATOR } from "@/lib/creator";
 import { cn } from "@/lib/format";
 import { useFormActions, useFormQuery } from "@/lib/queries";
-import { useToast } from "@/components/ui/Toast";
 
+/**
+ * The real nav reads Content · Workflow · Connect · Share · Results. Workflow
+ * has nothing behind it here, so it keeps its place and says so when pressed
+ * rather than being dropped from the row.
+ */
 const TABS = [
   { slug: "create", label: "Content" },
+  { slug: null, label: "Workflow" },
   { slug: "connect", label: "Connect" },
   { slug: "share", label: "Share" },
   { slug: "results", label: "Results" },
@@ -30,14 +44,17 @@ interface FormShellProps {
   formId: number;
   /** The builder puts its "Saving… / Saved" indicator here. */
   headerSlot?: ReactNode;
+  /** The builder's toolbar strip, shown directly above the working area. */
+  toolbar?: ReactNode;
   children: ReactNode;
 }
 
-export function FormShell({ formId, headerSlot, children }: FormShellProps) {
+export function FormShell({ formId, headerSlot, toolbar, children }: FormShellProps) {
   const pathname = usePathname();
   const { data: form } = useFormQuery(formId);
   const { publish, unpublish } = useFormActions();
   const toast = useToast();
+  const comingSoon = useComingSoon();
 
   const published = form?.status === "published";
 
@@ -56,27 +73,34 @@ export function FormShell({ formId, headerSlot, children }: FormShellProps) {
   };
 
   return (
-    /*
-     * Same frame as the dashboard: the bar sits on the page and the working area
-     * below it is an inset rounded shell. The two screens are one product, so
-     * they cannot disagree about their own chrome.
-     */
     <div className="flex h-dvh flex-col bg-bg">
-      <header className="flex h-14 shrink-0 items-center gap-3 px-4">
+      <header className="flex h-14 shrink-0 items-center gap-2 px-4">
         <Link
           href="/"
-          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[13px] font-medium text-ink-muted hover:bg-muted hover:text-ink"
+          className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[14px] text-ink-muted hover:bg-muted hover:text-ink"
         >
-          <ChevronLeft width={15} height={15} />
-          <span className="hidden sm:inline">My workspace</span>
+          <NavForms width={17} height={17} />
+          <span className="hidden sm:inline">Forms</span>
         </Link>
-
-        <span className="max-w-[220px] truncate text-[13px] font-medium text-ink">
+        <ChevronRight width={14} height={14} className="shrink-0 text-ink-faint" />
+        <span className="max-w-[240px] truncate text-[14px] text-ink">
           {form?.title ?? "…"}
         </span>
 
         <nav className="mx-auto flex items-center gap-0.5">
           {TABS.map((tab) => {
+            if (!tab.slug) {
+              return (
+                <button
+                  key={tab.label}
+                  type="button"
+                  {...comingSoonProps(comingSoon, tab.label)}
+                  className="rounded-lg px-3 py-1.5 text-[14px] text-ink-muted transition-colors hover:bg-muted"
+                >
+                  {tab.label}
+                </button>
+              );
+            }
             const href = `/forms/${formId}/${tab.slug}`;
             const active = pathname === href;
             return (
@@ -84,8 +108,8 @@ export function FormShell({ formId, headerSlot, children }: FormShellProps) {
                 key={tab.slug}
                 href={href}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
-                  active ? "bg-muted-strong text-ink-strong" : "text-ink-muted hover:bg-muted",
+                  "rounded-lg px-3 py-1.5 text-[14px] transition-colors",
+                  active ? "bg-muted-strong text-ink" : "text-ink-muted hover:bg-muted",
                 )}
               >
                 {tab.label}
@@ -94,32 +118,73 @@ export function FormShell({ formId, headerSlot, children }: FormShellProps) {
           })}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {headerSlot}
-          {published && form?.slug && (
-            <Link
-              href={`/f/${form.slug}`}
-              target="_blank"
-              className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-ink-muted hover:bg-muted hover:text-ink sm:flex"
-            >
-              <Eye width={15} height={15} />
-              Preview
-            </Link>
-          )}
-          <ThemeToggle />
+
           <Button
             size="sm"
-            variant={published ? "secondary" : "primary"}
+            variant="secondary"
             onClick={onPublishToggle}
             disabled={publish.isPending || unpublish.isPending}
           >
-            {published ? "Unpublish" : "Publish"}
+            <Play width={13} height={13} />
+            {published ? "Publish edits" : "Publish"}
           </Button>
+
+          {published && form?.slug ? (
+            <Link
+              href={`/f/${form.slug}`}
+              target="_blank"
+              title="Open the public form"
+              aria-label="Open the public form"
+              className="rounded-lg p-2 text-ink-muted hover:bg-muted hover:text-ink"
+            >
+              <LinkIcon width={17} height={17} />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              {...comingSoonProps(comingSoon, "The public link, once this form is published")}
+              className="rounded-lg p-2 text-ink-faint"
+            >
+              <LinkIcon width={17} height={17} />
+            </button>
+          )}
+
+          <span aria-hidden="true" className="mx-1 h-5 w-px bg-line-strong" />
+
+          <button
+            type="button"
+            {...comingSoonProps(comingSoon, "Plans and billing")}
+            className="rounded-lg bg-brand px-3.5 py-1.5 text-[14px] font-medium text-brand-ink transition-opacity hover:opacity-90"
+          >
+            View plans
+          </button>
+
+          <ThemeToggle />
+
+          <button
+            type="button"
+            {...comingSoonProps(comingSoon, "Help centre")}
+            className="rounded-lg p-1.5 text-ink-muted hover:bg-muted hover:text-ink"
+          >
+            <Help width={18} height={18} />
+          </button>
+
+          <span
+            title={CREATOR.handle}
+            className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-avatar-tan text-[12px] font-semibold text-ink-strong"
+          >
+            {CREATOR.initials}
+          </span>
         </div>
       </header>
 
-      <div className="mx-4 mb-4 flex min-h-0 flex-1 overflow-hidden rounded-[14px] bg-canvas">
-        {children}
+      <div className="mx-4 mb-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] bg-canvas">
+        {toolbar && (
+          <div className="shrink-0 border-b-2 border-groove">{toolbar}</div>
+        )}
+        <div className="flex min-h-0 flex-1">{children}</div>
       </div>
     </div>
   );

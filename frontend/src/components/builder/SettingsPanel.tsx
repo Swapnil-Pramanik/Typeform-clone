@@ -1,22 +1,24 @@
 "use client";
 
 /**
- * The right-hand block settings panel.
+ * The right-hand panel: what the selected block can be configured to do.
  *
- * Required, Description, Multiple selection and the rating scale are real and
- * write straight through the autosave. Randomize, "Other", "None" and Vertical
- * alignment are present but inert — they are what makes the panel read as the
- * real product, and they are labelled as out of scope in the README rather than
- * hidden.
+ * Laid out the way the real product lays it out — a block-type dropdown at the
+ * top, then a flat list of labelled rows, then the openable sections pinned to
+ * the bottom. Which rows appear depends on the block, but the shapes come from
+ * `PanelRow` so the three variants cannot drift apart.
+ *
+ * Required, Description, Multiple selection, the rating scale, the button label
+ * and the estimated time are real and write through the autosave. Randomize,
+ * "Other", "None" and Vertical alignment are present but inert — they are what
+ * makes the panel read as the real product, and pressing one says so.
  */
 
-import { useState } from "react";
-
 import { LogicPanel, type DraftRule } from "@/components/builder/LogicPanel";
+import { AddRow, Divider, Field, PANEL_INPUT, Row } from "@/components/builder/PanelRow";
 import { Toggle } from "@/components/builder/Toggle";
 import { Dropdown } from "@/components/ui/Dropdown";
-import { Lock, Sparkle, Trash } from "@/components/ui/icons";
-import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
+import { Gem, Trash } from "@/components/ui/icons";
 import { cn } from "@/lib/format";
 import { ANSWER_TYPES, BLOCKS, isChoiceType } from "@/lib/questionTypes";
 import type {
@@ -25,254 +27,187 @@ import type {
   WelcomeScreen as WelcomeScreenData,
 } from "@/types";
 
+const RATING_SCALES = [3, 4, 5, 7, 10];
+/** The real panel caps its button label and shows the count beneath. */
+const BUTTON_MAX = 24;
+
 interface SettingsPanelProps {
   question: Question | null;
-  /** Blocks this question may branch to. Empty disables the Logic section. */
-  logicTargets?: Question[];
-  onRulesChange?: (rules: DraftRule[]) => void;
-  logicError?: string | null;
-  /** Set when the welcome screen is selected rather than a question. */
-  welcome?: WelcomeScreenData | null;
-  onWelcomePatch?: (patch: Partial<WelcomeScreenData>) => void;
-  onWelcomeRemove?: () => void;
   onPatch: (patch: {
     type?: QuestionType;
     required?: boolean;
     settings?: Record<string, unknown>;
   }) => void;
   onDelete: () => void;
+  welcome?: WelcomeScreenData | null;
+  onWelcomePatch?: (patch: Partial<WelcomeScreenData>) => void;
+  onWelcomeRemove?: () => void;
+  logicTargets?: Question[];
+  onRulesChange?: (rules: DraftRule[]) => void;
+  logicError?: string | null;
 }
 
-const RATING_SCALES = [3, 4, 5, 7, 10];
+function Shell({ children }: { children?: React.ReactNode }) {
+  return (
+    <aside className="tf-scrollbar flex w-[300px] shrink-0 flex-col overflow-y-auto border-l-2 border-groove bg-panel">
+      {children}
+    </aside>
+  );
+}
+
+/** The pinned pair every block shows, whatever else is above them. */
+function PinnedSections({ children }: { children?: React.ReactNode }) {
+  return (
+    <div className="mt-auto">
+      <Divider />
+      {children ?? <AddRow label="Logic" comingSoonLabel="Logic on this block" />}
+      <Divider />
+      <AddRow
+        label="Comments"
+        comingSoonLabel="Comments"
+        trailing={
+          <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full border border-brand-line bg-brand-soft text-brand">
+            <Gem width={11} height={11} strokeWidth={2} />
+          </span>
+        }
+      />
+    </div>
+  );
+}
 
 export function SettingsPanel({
   question,
   onPatch,
   onDelete,
-  logicTargets = [],
-  onRulesChange,
-  logicError = null,
   welcome,
   onWelcomePatch,
   onWelcomeRemove,
+  logicTargets = [],
+  onRulesChange,
+  logicError = null,
 }: SettingsPanelProps) {
   if (welcome && onWelcomePatch && onWelcomeRemove) {
-    return <WelcomeSettings welcome={welcome} onPatch={onWelcomePatch} onRemove={onWelcomeRemove} />;
+    return (
+      <WelcomeSettings
+        welcome={welcome}
+        onPatch={onWelcomePatch}
+        onRemove={onWelcomeRemove}
+      />
+    );
   }
 
-  if (!question) {
-    return <aside className="w-[300px] shrink-0 border-l-2 border-groove bg-panel" />;
+  if (!question) return <Shell />;
+
+  if (question.type === "ending") {
+    return <EndingSettings question={question} onPatch={onPatch} onDelete={onDelete} />;
   }
 
-  const isEnding = question.type === "ending";
+  const settings = question.settings ?? {};
 
   return (
-    <aside className="tf-scrollbar flex w-[300px] shrink-0 flex-col overflow-y-auto border-l-2 border-groove bg-panel">
-      <div className="flex-1">
-        {!isEnding && (
-          <>
-            <Section title="Question">
-              <SegmentedControl options={["Text", "Video"]} comingSoon={["Video"]} />
-            </Section>
-
-            <Section title="Answer">
-              <Dropdown
-                label="Answer type"
-                value={question.type}
-                onChange={(type) => onPatch({ type })}
-                options={ANSWER_TYPES.map((type) => {
-                  const Icon = BLOCKS[type].icon;
-                  return {
-                    value: type,
-                    label: BLOCKS[type].label,
-                    icon: <Icon width={15} height={15} />,
-                  };
-                })}
-                triggerClassName="w-full border-line-strong bg-bg text-ink"
-              />
-            </Section>
-
-            <Section>
-              <Toggle
-                label="Required"
-                checked={question.required}
-                onChange={(required) => onPatch({ required })}
-              />
-
-              {isChoiceType(question.type) && (
-                <Toggle
-                  label="Multiple selection"
-                  checked={Boolean(question.settings?.multi_select)}
-                  onChange={(multi_select) => onPatch({ settings: { multi_select } })}
-                  disabled={question.type === "dropdown"}
-                  hint={
-                    question.type === "dropdown"
-                      ? "Dropdowns accept one answer"
-                      : undefined
-                  }
-                />
-              )}
-
-              {isChoiceType(question.type) && (
-                <>
-                  <Toggle label="Randomize" checked={false} onChange={() => {}} comingSoon />
-                  <Toggle label='"Other" option' checked={false} onChange={() => {}} comingSoon />
-                  <Toggle label='"None" option' checked={false} onChange={() => {}} comingSoon />
-                  <Toggle
-                    label="Vertical alignment"
-                    checked
-                    onChange={() => {}}
-                    comingSoon
-                  />
-                </>
-              )}
-
-              {question.type === "rating" && (
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-[13px] text-ink">Steps</span>
-                  <div className="flex gap-1">
-                    {RATING_SCALES.map((scale) => (
-                      <button
-                        key={scale}
-                        type="button"
-                        onClick={() => onPatch({ settings: { max_rating: scale } })}
-                        className={cn(
-                          "h-7 w-7 rounded text-[12px] font-medium transition-colors",
-                          (question.settings?.max_rating ?? 5) === scale
-                            ? "bg-accent text-accent-ink"
-                            : "bg-muted text-ink-muted hover:bg-muted",
-                        )}
-                      >
-                        {scale}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </Section>
-
-            <Section title="Image or video">
-              <ImageSlot />
-            </Section>
-          </>
-        )}
-
-        {isEnding && (
-          <Section title="Ending">
-            <p className="text-[12px] leading-relaxed text-ink-muted">
-              Endings are ordinary blocks, so this screen is data rather than a
-              hardcoded page. Edit its copy in the preview.
-            </p>
-          </Section>
-        )}
+    <Shell>
+      <div className="p-3">
+        <Dropdown
+          label="Answer type"
+          value={question.type}
+          onChange={(type) => onPatch({ type })}
+          options={ANSWER_TYPES.map((type) => {
+            const Icon = BLOCKS[type].icon;
+            return {
+              value: type,
+              label: BLOCKS[type].label,
+              icon: <Icon width={15} height={15} />,
+            };
+          })}
+          triggerClassName="w-full border-line-strong bg-bg py-2 text-ink"
+        />
       </div>
 
-      <div className="border-t border-line">
-        {!isEnding && onRulesChange ? (
-          <section className="border-b border-line px-4 py-3.5">
-            <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-              <Sparkle width={13} height={13} />
-              Logic
-            </h3>
+      <Divider />
+
+      <Row label="Required">
+        <Toggle
+          label="Required"
+          checked={question.required}
+          onChange={(required) => onPatch({ required })}
+        />
+      </Row>
+
+      {isChoiceType(question.type) && (
+        <>
+          <Row label="Multiple selection">
+            <Toggle
+              label="Multiple selection"
+              checked={Boolean(settings.multi_select)}
+              onChange={(multi_select) => onPatch({ settings: { multi_select } })}
+              disabled={question.type === "dropdown"}
+              hint={
+                question.type === "dropdown" ? "Dropdowns accept one answer" : undefined
+              }
+            />
+          </Row>
+          <Row label="Randomize">
+            <Toggle label="Randomize" checked={false} onChange={() => {}} comingSoon />
+          </Row>
+          <Row label={'"Other" option'}>
+            <Toggle label={'"Other" option'} checked={false} onChange={() => {}} comingSoon />
+          </Row>
+          <Row label={'"None" option'}>
+            <Toggle label={'"None" option'} checked={false} onChange={() => {}} comingSoon />
+          </Row>
+          <Row label="Vertical alignment">
+            <Toggle label="Vertical alignment" checked onChange={() => {}} comingSoon />
+          </Row>
+        </>
+      )}
+
+      {question.type === "rating" && (
+        <Row label="Steps">
+          <div className="flex gap-1">
+            {RATING_SCALES.map((scale) => (
+              <button
+                key={scale}
+                type="button"
+                onClick={() => onPatch({ settings: { max_rating: scale } })}
+                className={cn(
+                  "h-7 w-7 rounded-md text-[12px] font-medium transition-colors",
+                  (settings.max_rating ?? 5) === scale
+                    ? "bg-accent text-accent-ink"
+                    : "bg-muted text-ink-muted hover:bg-muted-strong",
+                )}
+              >
+                {scale}
+              </button>
+            ))}
+          </div>
+        </Row>
+      )}
+
+      <Divider />
+      <AddRow label="Image or video" comingSoonLabel="Question images and video" />
+
+      <PinnedSections>
+        {onRulesChange ? (
+          <div className="px-4 py-3">
+            <p className="mb-2 text-[14px] text-ink">Logic</p>
             <LogicPanel
               question={question}
               targets={logicTargets}
               onChange={onRulesChange}
               error={logicError}
             />
-          </section>
-        ) : (
-          <PinnedSection title="Logic" icon={<Sparkle width={14} height={14} />} />
-        )}
-        <PinnedSection title="Comments" icon={<Lock width={14} height={14} />} />
-        <div className="p-3">
-          <button
-            type="button"
-            onClick={onDelete}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-line-strong px-3 py-2 text-[13px] font-medium text-danger hover:bg-danger/5"
-          >
-            <Trash width={14} height={14} />
-            Delete block
-          </button>
-        </div>
+          </div>
+        ) : undefined}
+      </PinnedSections>
+
+      <div className="border-t border-line p-3">
+        <DeleteButton onClick={onDelete} label="Delete block" />
       </div>
-    </aside>
+    </Shell>
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="border-b border-line px-4 py-3.5">
-      {title && (
-        <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-          {title}
-        </h3>
-      )}
-      <div className="flex flex-col gap-0.5">{children}</div>
-    </section>
-  );
-}
-
-/** Logic and Comments are pinned to the bottom in the real panel. */
-function PinnedSection({ title, icon }: { title: string; icon: React.ReactNode }) {
-  const comingSoon = useComingSoon();
-  return (
-    <button
-      type="button"
-      {...comingSoonProps(comingSoon, title)}
-      className="flex w-full items-center justify-between px-4 py-3 text-[13px] text-ink-faint hover:bg-muted"
-    >
-      <span className="flex items-center gap-2">
-        {icon}
-        {title}
-      </span>
-      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
-        Soon
-      </span>
-    </button>
-  );
-}
-
-function SegmentedControl({
-  options,
-  comingSoon = [],
-}: {
-  options: string[];
-  /** Segments that exist in the real panel but do nothing here. */
-  comingSoon?: string[];
-}) {
-  const announce = useComingSoon();
-  const [active, setActive] = useState(options[0]);
-  return (
-    <div className="flex rounded-lg bg-muted p-0.5">
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          title={comingSoon.includes(option) ? "Coming soon" : undefined}
-          onClick={() =>
-            comingSoon.includes(option) ? announce(option) : setActive(option)
-          }
-          className={cn(
-            "flex-1 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
-            active === option ? "bg-bg text-ink shadow-sm" : "text-ink-muted",
-          )}
-        >
-          {option}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-
-/** The welcome screen's own options: button label and the "Takes X minutes" line. */
+/** Welcome screens carry a button label and an optional "takes X minutes" line. */
 function WelcomeSettings({
   welcome,
   onPatch,
@@ -282,75 +217,150 @@ function WelcomeSettings({
   onPatch: (patch: Partial<WelcomeScreenData>) => void;
   onRemove: () => void;
 }) {
+  const label = welcome.button_text ?? "";
+  const timed = welcome.estimated_minutes !== undefined;
+
   return (
-    <aside className="tf-scrollbar flex w-[300px] shrink-0 flex-col overflow-y-auto border-l-2 border-groove bg-panel">
-      <div className="flex-1">
-        <Section title="Welcome screen">
-          <p className="text-[12px] leading-relaxed text-ink-muted">
-            Shown once, before the first question. Edit its copy in the preview.
-          </p>
-        </Section>
-
-        <Section title="Button label">
-          <input
-            value={welcome.button_text ?? ""}
-            onChange={(event) => onPatch({ button_text: event.target.value })}
-            placeholder="Start"
-            aria-label="Button label"
-            className="w-full rounded-lg border border-line-strong bg-bg px-3 py-2 text-[13px] text-ink"
-          />
-        </Section>
-
-        <Section title="Estimated time">
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              max={120}
-              value={welcome.estimated_minutes ?? ""}
-              onChange={(event) =>
-                onPatch({
-                  estimated_minutes: event.target.value
-                    ? Number(event.target.value)
-                    : undefined,
-                })
-              }
-              aria-label="Estimated minutes"
-              className="w-20 rounded-lg border border-line-strong bg-bg px-3 py-2 text-[13px] text-ink"
-            />
-            <span className="text-[13px] text-ink-muted">minutes</span>
-          </div>
-          <p className="mt-1.5 text-[11px] text-ink-faint">
-            Leave empty to hide the line.
-          </p>
-        </Section>
+    <Shell>
+      <div className="p-3">
+        <div className="flex w-full items-center gap-2 rounded-lg border border-line-strong bg-bg px-3 py-2 text-[14px] text-ink">
+          <BlockChip tint="#0891b2">★</BlockChip>
+          Welcome Screen
+        </div>
       </div>
+
+      <Divider />
+
+      <Row label="Time to complete" hint="Shows a 'Takes X minutes' line under the button">
+        <Toggle
+          label="Time to complete"
+          checked={timed}
+          onChange={(on) => onPatch({ estimated_minutes: on ? 1 : undefined })}
+        />
+      </Row>
+
+      {timed && (
+        <Field label="Minutes">
+          <input
+            type="number"
+            min={1}
+            max={120}
+            value={welcome.estimated_minutes ?? 1}
+            onChange={(event) =>
+              onPatch({ estimated_minutes: Math.max(1, Number(event.target.value)) })
+            }
+            aria-label="Estimated minutes"
+            className={PANEL_INPUT}
+          />
+        </Field>
+      )}
+
+      <Row label="Number of submissions" hint="Shows how many people have replied">
+        <Toggle
+          label="Number of submissions"
+          checked={false}
+          onChange={() => {}}
+          comingSoon
+        />
+      </Row>
+
+      <Field label="Button" counter={`${label.length}/${BUTTON_MAX}`}>
+        <input
+          value={label}
+          maxLength={BUTTON_MAX}
+          placeholder="Start"
+          onChange={(event) => onPatch({ button_text: event.target.value })}
+          aria-label="Button label"
+          className={PANEL_INPUT}
+        />
+      </Field>
+
+      <Divider />
+      <AddRow label="Image or video" comingSoonLabel="Welcome images and video" />
+
+      <PinnedSections />
 
       <div className="border-t border-line p-3">
-        <button
-          type="button"
-          onClick={onRemove}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-line-strong px-3 py-2 text-[13px] font-medium text-danger hover:bg-danger/5"
-        >
-          <Trash width={14} height={14} />
-          Remove welcome screen
-        </button>
+        <DeleteButton onClick={onRemove} label="Remove welcome screen" />
       </div>
-    </aside>
+    </Shell>
   );
 }
 
+/** Endings are screens too: copy in the preview, a button label here. */
+function EndingSettings({
+  question,
+  onPatch,
+  onDelete,
+}: {
+  question: Question;
+  onPatch: SettingsPanelProps["onPatch"];
+  onDelete: () => void;
+}) {
+  const label = question.settings?.button_text ?? "";
 
-/** The image/video slot: a real placement in the panel, with nothing behind it. */
-function ImageSlot() {
-  const comingSoon = useComingSoon();
+  return (
+    <Shell>
+      <div className="p-3">
+        <div className="flex w-full items-center gap-2 rounded-lg border border-line-strong bg-bg px-3 py-2 text-[14px] text-ink">
+          <BlockChip tint="#475569">A</BlockChip>
+          Ending
+        </div>
+      </div>
+
+      <Divider />
+
+      <div className="px-4 py-2.5">
+        <p className="text-[13px] leading-relaxed text-ink-muted">
+          Endings are ordinary blocks, so this screen is data rather than a
+          hardcoded page. Edit its copy in the preview.
+        </p>
+      </div>
+
+      <Field label="Button" counter={`${label.length}/${BUTTON_MAX}`}>
+        <input
+          value={label}
+          maxLength={BUTTON_MAX}
+          placeholder="Create a typeform"
+          onChange={(event) => onPatch({ settings: { button_text: event.target.value } })}
+          aria-label="Button label"
+          className={PANEL_INPUT}
+        />
+      </Field>
+
+      <Divider />
+      <AddRow label="Image or video" comingSoonLabel="Ending images and video" />
+
+      <PinnedSections />
+
+      <div className="border-t border-line p-3">
+        <DeleteButton onClick={onDelete} label="Delete block" />
+      </div>
+    </Shell>
+  );
+}
+
+function BlockChip({ tint, children }: { tint: string; children: React.ReactNode }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-semibold text-white"
+      style={{ backgroundColor: tint }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function DeleteButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
       type="button"
-      {...comingSoonProps(comingSoon, "Question images and video")}
-      className="flex h-24 w-full items-center justify-center rounded-lg border border-dashed border-line text-[12px] text-ink-faint hover:bg-muted"
+      onClick={onClick}
+      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-line-strong px-3 py-2 text-[13px] font-medium text-danger hover:bg-danger/5"
     >
-      Drop an image here
+      <Trash width={14} height={14} />
+      {label}
     </button>
   );
 }

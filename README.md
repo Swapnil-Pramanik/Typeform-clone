@@ -288,6 +288,8 @@ drift from what a respondent sees.
         │   │   ├── SettingsPanel.tsx         # right panel, per block
         │   │   ├── DesignSettings.tsx        # right panel, per form: colour/bg/font
         │   │   ├── LogicPanel.tsx            # the branching rule editor
+        │   │   ├── PanelRow.tsx             # the settings panel's row shapes
+        │   │   ├── BuilderToolbar.tsx        # Add content · Design · tools
         │   │   ├── AddElementModal.tsx
         │   │   ├── SaveIndicator.tsx
         │   │   └── Toggle.tsx
