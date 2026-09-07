@@ -36,6 +36,12 @@ export interface BlockMeta {
   supported: boolean;
   /** Chip colour in the left rail, so the block list scans by type at a glance. */
   tint: string;
+  /**
+   * Copy a new block is created with. Question types deliberately have none:
+   * an empty title shows the renderer's placeholder, so the creator types
+   * straight into it instead of first clearing text someone else wrote.
+   * Endings do carry copy, because theirs is a finished sentence.
+   */
   defaultTitle?: string;
   defaultSettings?: QuestionSettings;
 }
@@ -47,7 +53,6 @@ export const BLOCKS: Record<QuestionType, BlockMeta> = {
     icon: TypeShortText,
     supported: true,
     tint: "#3b82f6",
-    defaultTitle: "Your question here",
   },
   long_text: {
     type: "long_text",
@@ -55,7 +60,6 @@ export const BLOCKS: Record<QuestionType, BlockMeta> = {
     icon: TypeLongText,
     supported: true,
     tint: "#6366f1",
-    defaultTitle: "Your question here",
   },
   multiple_choice: {
     type: "multiple_choice",
@@ -63,7 +67,6 @@ export const BLOCKS: Record<QuestionType, BlockMeta> = {
     icon: TypeChoice,
     supported: true,
     tint: "#e0761c",
-    defaultTitle: "Your question here",
   },
   dropdown: {
     type: "dropdown",
@@ -71,7 +74,6 @@ export const BLOCKS: Record<QuestionType, BlockMeta> = {
     icon: TypeDropdown,
     supported: true,
     tint: "#0891b2",
-    defaultTitle: "Your question here",
   },
   email: {
     type: "email",
@@ -79,7 +81,6 @@ export const BLOCKS: Record<QuestionType, BlockMeta> = {
     icon: TypeEmail,
     supported: true,
     tint: "#db2777",
-    defaultTitle: "What is your email address?",
   },
   number: {
     type: "number",
@@ -87,7 +88,6 @@ export const BLOCKS: Record<QuestionType, BlockMeta> = {
     icon: TypeNumber,
     supported: true,
     tint: "#0d9488",
-    defaultTitle: "Your question here",
   },
   yes_no: {
     type: "yes_no",
@@ -95,7 +95,6 @@ export const BLOCKS: Record<QuestionType, BlockMeta> = {
     icon: TypeYesNo,
     supported: true,
     tint: "#7c3aed",
-    defaultTitle: "Your question here",
   },
   rating: {
     type: "rating",
@@ -103,7 +102,6 @@ export const BLOCKS: Record<QuestionType, BlockMeta> = {
     icon: TypeRating,
     supported: true,
     tint: "#ca8a04",
-    defaultTitle: "How would you rate us?",
     defaultSettings: { max_rating: 5, icon: "star" },
   },
   ending: {

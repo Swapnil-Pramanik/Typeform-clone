@@ -63,9 +63,11 @@ export default function BuilderPage({
   const addBlock = (type: QuestionType) =>
     run(async () => {
       const meta = BLOCKS[type];
+      // Question types are created untitled so the renderer's placeholder shows
+      // and the creator types straight in; only endings ship with real copy.
       const created = await builder.addQuestion(
         type,
-        meta.defaultTitle ?? "Your question here",
+        meta.defaultTitle ?? "",
         meta.defaultSettings,
       );
       setChosenId(created.id);
