@@ -118,7 +118,7 @@ export function SettingsPanel({ question, onPatch, onDelete }: SettingsPanelProp
                           "h-7 w-7 rounded text-[12px] font-medium transition-colors",
                           (question.settings?.max_rating ?? 5) === scale
                             ? "bg-accent text-accent-ink"
-                            : "bg-choice text-ink-muted hover:bg-choice-hover",
+                            : "bg-muted text-ink-muted hover:bg-muted",
                         )}
                       >
                         {scale}
@@ -197,7 +197,7 @@ function PinnedSection({ title, icon }: { title: string; icon: React.ReactNode }
         {icon}
         {title}
       </span>
-      <span className="rounded-full bg-choice px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
         Soon
       </span>
     </button>
@@ -207,7 +207,7 @@ function PinnedSection({ title, icon }: { title: string; icon: React.ReactNode }
 function SegmentedControl({ options }: { options: string[] }) {
   const [active, setActive] = useState(options[0]);
   return (
-    <div className="flex rounded-lg bg-choice p-0.5">
+    <div className="flex rounded-lg bg-muted p-0.5">
       {options.map((option) => (
         <button
           key={option}

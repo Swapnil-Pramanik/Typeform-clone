@@ -43,7 +43,7 @@ export default function ResultsPage({
       <div className="tf-scrollbar flex-1 overflow-y-auto bg-canvas p-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-4">
           <header className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex rounded-lg bg-choice p-0.5">
+            <div className="flex rounded-lg bg-muted p-0.5">
               {VIEWS.map((name) => (
                 <button
                   key={name}

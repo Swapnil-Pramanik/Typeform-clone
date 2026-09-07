@@ -15,7 +15,7 @@ function Icon({ children, ...props }: IconProps) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.7}
+      strokeWidth={1.85}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -124,6 +124,97 @@ export const Sparkle = (p: IconProps) => (
     <path d="M12 4l1.6 4.4L18 10l-4.4 1.6L12 16l-1.6-4.4L6 10l4.4-1.6Z" />
     <path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8Z" />
   </Icon>
+);
+
+/* --- dashboard chrome ------------------------------------------------------ */
+
+export const NavForms = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="5.5" width="18" height="13" rx="2" />
+    <path d="M7 10h5M7 14h3M17 9.5v5" />
+  </Icon>
+);
+export const NavContacts = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="9" cy="8.5" r="2.8" /><path d="M3.6 19a5.6 5.6 0 0 1 10.8 0" />
+    <path d="M16 6.2a2.8 2.8 0 0 1 0 5.4M17.5 19a5 5 0 0 0-2-4" />
+  </Icon>
+);
+export const NavAutomations = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="6" cy="17" r="2.2" /><circle cx="17" cy="6.5" r="2.2" />
+    <circle cx="17" cy="17" r="2.2" />
+    <path d="M8 15.6 15 8.2M8.4 17h6.4" />
+  </Icon>
+);
+export const NavInsights = (p: IconProps) => (
+  <Icon {...p}><path d="M4 5v14h16" /><path d="m7 14 3.5-4 3 2.4L19 7" /></Icon>
+);
+export const NavResearch = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="11" cy="11" r="6.5" /><path d="m20 20-3.4-3.4M11 8.4v5.2M8.4 11h5.2" />
+  </Icon>
+);
+export const Integrations = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="3.5" width="7" height="7" rx="1.6" />
+    <rect x="3.5" y="13.5" width="7" height="7" rx="1.6" />
+    <rect x="13.5" y="3.5" width="7" height="7" rx="1.6" />
+    <path d="M17 14v6M14 17h6" />
+  </Icon>
+);
+export const BrandKit = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3.5 9h17v9a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z" />
+    <path d="M8.5 9V6.5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2V9" />
+  </Icon>
+);
+export const Help = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.4" />
+    <path d="M12 17h.01" />
+  </Icon>
+);
+export const Workspaces = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.6" />
+    <rect x="13" y="3.5" width="7.5" height="7.5" rx="1.6" />
+    <rect x="3.5" y="13" width="7.5" height="7.5" rx="1.6" />
+    <rect x="13" y="13" width="7.5" height="7.5" rx="1.6" />
+  </Icon>
+);
+export const Invite = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="10" cy="8.5" r="3" /><path d="M4 19a6 6 0 0 1 12 0" />
+    <path d="M19 8v5M16.5 10.5h5" />
+  </Icon>
+);
+export const Gem = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m12 3 8 5.5-8 12.5L4 8.5Z" /><path d="m8.5 9 3.5 3 3.5-3" />
+  </Icon>
+);
+export const Calendar = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="5" width="17" height="15" rx="2" />
+    <path d="M3.5 9.5h17M8 3.2v3.4M16 3.2v3.4" />
+  </Icon>
+);
+export const Mic = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="9.5" y="3" width="5" height="10" rx="2.5" />
+    <path d="M6 11a6 6 0 0 0 12 0M12 17v4M9.5 21h5" />
+  </Icon>
+);
+export const Send = (p: IconProps) => (
+  <Icon {...p}><path d="M5 4.5 20 12 5 19.5l3-7.5Z" /></Icon>
+);
+export const CaretUp = (p: IconProps) => (
+  <Icon {...p} fill="currentColor" stroke="none"><path d="m12 9 5 6H7Z" /></Icon>
+);
+export const CaretDown = (p: IconProps) => (
+  <Icon {...p} fill="currentColor" stroke="none"><path d="m12 15 5-6H7Z" /></Icon>
 );
 
 /* --- question-type glyphs ------------------------------------------------- */

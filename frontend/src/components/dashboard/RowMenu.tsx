@@ -56,7 +56,7 @@ export function RowMenu({
           event.stopPropagation();
           setOpen((value) => !value);
         }}
-        className="rounded-lg p-1.5 text-ink-muted hover:bg-choice hover:text-ink"
+        className="rounded-lg p-1.5 text-ink-muted hover:bg-muted hover:text-ink"
       >
         <Dots width={16} height={16} />
       </button>
@@ -122,7 +122,7 @@ function Item({
           ? "cursor-not-allowed text-ink-faint/70"
           : tone === "danger"
             ? "text-danger hover:bg-danger/8"
-            : "text-ink hover:bg-choice",
+            : "text-ink hover:bg-muted",
       )}
     >
       {children}
@@ -132,7 +132,7 @@ function Item({
 
 function LinkItem({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link role="menuitem" href={href} className={cn(ITEM_CLASS, "text-ink hover:bg-choice")}>
+    <Link role="menuitem" href={href} className={cn(ITEM_CLASS, "text-ink hover:bg-muted")}>
       {children}
     </Link>
   );

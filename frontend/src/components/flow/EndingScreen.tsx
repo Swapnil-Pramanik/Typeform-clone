@@ -72,7 +72,7 @@ export function EndingScreen({
           type="button"
           onClick={onRestart}
           disabled={!onRestart}
-          className="mt-2 rounded-lg border border-line-strong px-5 py-2.5 text-[15px] font-medium text-ink transition-colors enabled:hover:bg-choice disabled:cursor-default"
+          className="mt-2 rounded-lg border border-line-strong px-5 py-2.5 text-[15px] font-medium text-ink transition-colors enabled:hover:bg-muted disabled:cursor-default"
         >
           {ending?.settings?.button_text ?? "Submit another response"}
         </button>

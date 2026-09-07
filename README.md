@@ -591,13 +591,23 @@ is one attribute on `<html>`.
 
 | Token group | Variables |
 |---|---|
-| Surfaces | `--tf-bg`, `--tf-canvas`, `--tf-panel`, `--tf-rail`, `--tf-overlay` |
+| Surfaces | `--tf-bg` (white: the flow, cards), `--tf-canvas` (chrome ground), `--tf-panel` (raised), `--tf-rail` (sidebars), `--tf-overlay` |
 | Text | `--tf-ink`, `--tf-ink-strong`, `--tf-ink-muted`, `--tf-ink-faint` |
 | Lines | `--tf-line`, `--tf-line-strong` |
+| Chrome states | `--tf-muted` (hover), `--tf-muted-strong` (selected) |
 | Accents | `--tf-accent`, `--tf-accent-ink`, `--tf-focus`, `--tf-danger`, `--tf-success` |
-| Choice cards | `--tf-choice-bg`, `--tf-choice-bg-hover`, `--tf-choice-bg-selected`, `--tf-choice-key-bg` |
+| Brand green | `--tf-brand`, `--tf-brand-ink`, `--tf-brand-soft`, `--tf-brand-line` |
+| Informational blue | `--tf-info`, `--tf-info-ink`, `--tf-info-line` |
+| Identity & AI chrome | `--tf-avatar-green`, `--tf-avatar-tan`, `--tf-ai-ring`, `--tf-ai-ring-soft` |
+| Choice cards (flow only) | `--tf-choice-bg`, `--tf-choice-bg-hover`, `--tf-choice-bg-selected`, `--tf-choice-key-bg` |
 | Motion | `--tf-step-duration`, `--tf-step-ease` |
 | Radii | `--tf-radius`, `--tf-radius-lg` |
+
+The light values are **sampled from the real product's dashboard** rather than
+guessed: the warm charcoal `#3b333d` used for buttons and headings, the `#f7f7f8`
+chrome ground, the `#377568` brand green, and the `#e5f0fd` informational tile.
+The respondent flow keeps its own slightly warmer `choice` palette, because its
+answer cards are warmer than the surrounding chrome in the real product too.
 
 Notes worth stating:
 
@@ -611,6 +621,24 @@ Notes worth stating:
   cross-fade, and `globals.css` collapses transition durations.
 - Icons are inline SVG in `ui/icons.tsx` — `currentColor`, so they theme for
   free, and no icon package for two dozen glyphs.
+
+### Fidelity notes for the dashboard
+
+Matched against a screenshot of the live product: a **full-width account bar**
+(workspace chip, handle, Integrations, Brand kit, View plans, help, avatar), a
+**full-width workspace nav beneath it** — Forms · Contacts · Automations ·
+Insights, then a rule and the Research Flow demo entry — with the sidebar and
+workspace pane sitting *below both*, not beside the nav. The sidebar carries the
+Create form button, a borderless search row, a Workspaces tree under a
+collapsible **Private** group, and, pinned to the bottom, the response meter with
+its "Increase response limit" button and the Ask Typeform AI composer. The
+workspace header is the title plus `⋯`, Invite and the plan gem, with the sort
+control and a labelled List/Grid segmented toggle pushed right.
+
+Chrome that the real product has and this build does not implement — Integrations,
+Brand kit, View plans, Research Flow, Invite, the AI composer, Increase response
+limit — is rendered in place and marked Coming Soon rather than omitted, so the
+layout reads as the real thing.
 
 ### Fidelity notes for the respondent flow
 
@@ -746,7 +774,10 @@ product puts the feature:
 | Add-element modal | Picture Choice, NPS, Ranking, Matrix, Date, Signature, Payment, File Upload, Scheduler, Statement, Question Group, Redirect, Welcome Screen — shown greyed out in their real groups |
 | Add-element modal tabs | *Import questions*, *Create with AI* |
 | Share → *Embed & distribute* | Standard/popup/slider/side-tab embeds, email, QR |
-| Dashboard nav | *Contacts*, *Automations*, *Insights* |
+| Dashboard nav | *Contacts*, *Automations*, *Insights*, *Research Flow* |
+| Dashboard account bar | *Integrations*, *Brand kit*, *View plans*, help, the account switcher |
+| Dashboard sidebar | *Ask Typeform AI*, *Increase response limit* |
+| Workspace header | *Invite*, the workspace `⋯` menu |
 | Row menu | *Workflow*, *Copy to*, *Move to* |
 | Sidebar | *New workspace* |
 

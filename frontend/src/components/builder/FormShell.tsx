@@ -60,7 +60,7 @@ export function FormShell({ formId, headerSlot, children }: FormShellProps) {
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-3">
         <Link
           href="/"
-          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[13px] font-medium text-ink-muted hover:bg-choice hover:text-ink"
+          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[13px] font-medium text-ink-muted hover:bg-muted hover:text-ink"
         >
           <ChevronLeft width={15} height={15} />
           <span className="hidden sm:inline">My workspace</span>
@@ -80,7 +80,7 @@ export function FormShell({ formId, headerSlot, children }: FormShellProps) {
                 href={href}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
-                  active ? "bg-choice-selected text-ink" : "text-ink-muted hover:bg-choice",
+                  active ? "bg-muted-strong text-ink" : "text-ink-muted hover:bg-muted",
                 )}
               >
                 {tab.label}
@@ -95,7 +95,7 @@ export function FormShell({ formId, headerSlot, children }: FormShellProps) {
             <Link
               href={`/f/${form.slug}`}
               target="_blank"
-              className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-ink-muted hover:bg-choice hover:text-ink sm:flex"
+              className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-ink-muted hover:bg-muted hover:text-ink sm:flex"
             >
               <Eye width={15} height={15} />
               Preview

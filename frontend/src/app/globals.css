@@ -4,36 +4,58 @@
    Design tokens.
 
    One CSS-variable layer, surfaced to Tailwind through @theme inline, so every
-   colour in the app is named once. Dark mode is the same token names redefined
-   under [data-theme="dark"] — no component knows which theme is active.
+   colour in the app is named once. The light values are sampled from the real
+   Typeform dashboard. Dark mode is the same token names redefined under
+   [data-theme="dark"] — no component knows which theme is active.
 --------------------------------------------------------------------------- */
 
 :root {
   /* Surfaces */
-  --tf-bg: #ffffff;
-  --tf-canvas: #f7f7f6;          /* the builder's preview canvas */
-  --tf-panel: #ffffff;
-  --tf-rail: #fbfbfa;
+  --tf-bg: #ffffff;              /* white surfaces: the respondent flow, cards */
+  --tf-canvas: #f7f7f8;          /* the app's chrome background */
+  --tf-panel: #ffffff;           /* raised: top bar, tables, modals, popovers */
+  --tf-rail: #f7f7f8;            /* sidebars — the same ground as the canvas */
   --tf-overlay: rgba(15, 15, 16, 0.45);
 
-  /* Text */
-  --tf-ink: #26262b;             /* question text — dark grey, not pure black */
-  --tf-ink-strong: #0b0b0c;
-  --tf-ink-muted: #6b6b73;
-  --tf-ink-faint: #9a9aa2;
+  /* Text — warm charcoal, never pure black */
+  --tf-ink: #4b424d;
+  --tf-ink-strong: #3b333d;
+  --tf-ink-muted: #645d67;
+  --tf-ink-faint: #8c868e;
 
   /* Lines */
-  --tf-line: #e6e6e3;
-  --tf-line-strong: #d6d6d1;
+  --tf-line: #e9e8ea;
+  --tf-line-strong: #dedcde;
+
+  /* Chrome hover and selection */
+  --tf-muted: #f0eff1;
+  --tf-muted-strong: #eeedef;
 
   /* Accents */
-  --tf-accent: #26262b;          /* the dark button / badge fill */
+  --tf-accent: #3b333d;          /* the dark button / badge fill */
   --tf-accent-ink: #ffffff;
   --tf-focus: #3d5afe;
   --tf-danger: #d92d20;
   --tf-success: #067647;
 
-  /* Choice cards */
+  /* Brand green — "View plans", the plan gem */
+  --tf-brand: #377568;
+  --tf-brand-ink: #ffffff;
+  --tf-brand-soft: #f5faf8;
+  --tf-brand-line: #cfe4dc;
+
+  /* Informational blue — the empty-state tile and the Demo pill */
+  --tf-info: #e5f0fd;
+  --tf-info-ink: #1a477b;
+  --tf-info-line: #c3dcf6;
+
+  /* Identity chips and the AI composer's ring */
+  --tf-avatar-green: #759675;
+  --tf-avatar-tan: #efd4a6;
+  --tf-ai-ring: #c4aef0;
+  --tf-ai-ring-soft: #ece3fa;
+
+  /* Choice cards in the respondent flow — warmer than the chrome greys */
   --tf-choice-bg: #f2f2ef;
   --tf-choice-bg-hover: #ebebe7;
   --tf-choice-bg-selected: #e2e2dc;
@@ -48,23 +70,40 @@
 }
 
 [data-theme="dark"] {
-  --tf-bg: #0f0f11;
-  --tf-canvas: #131316;
+  --tf-bg: #17171a;
+  --tf-canvas: #0f0f11;
   --tf-panel: #17171a;
   --tf-rail: #121214;
   --tf-overlay: rgba(0, 0, 0, 0.6);
 
-  --tf-ink: #ececee;
+  --tf-ink: #e4e2e6;
   --tf-ink-strong: #ffffff;
-  --tf-ink-muted: #9e9ea6;
-  --tf-ink-faint: #6d6d75;
+  --tf-ink-muted: #a09aa4;
+  --tf-ink-faint: #746e78;
 
   --tf-line: #2a2a30;
   --tf-line-strong: #3a3a42;
 
+  --tf-muted: #202026;
+  --tf-muted-strong: #2a2a31;
+
   --tf-accent: #ffffff;
-  --tf-accent-ink: #0f0f11;
+  --tf-accent-ink: #17171a;
   --tf-focus: #7c92ff;
+
+  --tf-brand: #4f9382;
+  --tf-brand-ink: #0f0f11;
+  --tf-brand-soft: #17231f;
+  --tf-brand-line: #2c4a41;
+
+  --tf-info: #16283d;
+  --tf-info-ink: #a8cdf5;
+  --tf-info-line: #26456b;
+
+  --tf-avatar-green: #5d7d5d;
+  --tf-avatar-tan: #b99a63;
+  --tf-ai-ring: #7d5fc0;
+  --tf-ai-ring-soft: #2a2140;
 
   --tf-choice-bg: #1e1e23;
   --tf-choice-bg-hover: #26262c;
@@ -83,11 +122,24 @@
   --color-ink-faint: var(--tf-ink-faint);
   --color-line: var(--tf-line);
   --color-line-strong: var(--tf-line-strong);
+  --color-muted: var(--tf-muted);
+  --color-muted-strong: var(--tf-muted-strong);
   --color-accent: var(--tf-accent);
   --color-accent-ink: var(--tf-accent-ink);
   --color-focus: var(--tf-focus);
   --color-danger: var(--tf-danger);
   --color-success: var(--tf-success);
+  --color-brand: var(--tf-brand);
+  --color-brand-ink: var(--tf-brand-ink);
+  --color-brand-soft: var(--tf-brand-soft);
+  --color-brand-line: var(--tf-brand-line);
+  --color-info: var(--tf-info);
+  --color-info-ink: var(--tf-info-ink);
+  --color-info-line: var(--tf-info-line);
+  --color-avatar-green: var(--tf-avatar-green);
+  --color-avatar-tan: var(--tf-avatar-tan);
+  --color-ai-ring: var(--tf-ai-ring);
+  --color-ai-ring-soft: var(--tf-ai-ring-soft);
   --color-choice: var(--tf-choice-bg);
   --color-choice-hover: var(--tf-choice-bg-hover);
   --color-choice-selected: var(--tf-choice-bg-selected);

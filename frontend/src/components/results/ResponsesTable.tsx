@@ -47,7 +47,7 @@ export function ResponsesTable({ responses, questions, onOpen }: ResponsesTableP
               <tr
                 key={response.id}
                 onClick={() => onOpen(response)}
-                className="cursor-pointer border-b border-line last:border-0 hover:bg-choice"
+                className="cursor-pointer border-b border-line last:border-0 hover:bg-muted"
               >
                 <td className="whitespace-nowrap px-4 py-2.5 text-ink-muted">
                   {response.submitted_at
@@ -59,7 +59,7 @@ export function ResponsesTable({ responses, questions, onOpen }: ResponsesTableP
                     className={
                       response.is_complete
                         ? "rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success"
-                        : "rounded-full bg-choice px-2 py-0.5 text-[11px] font-medium text-ink-muted"
+                        : "rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-ink-muted"
                     }
                   >
                     {response.is_complete ? "Complete" : "Partial"}

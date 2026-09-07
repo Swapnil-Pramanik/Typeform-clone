@@ -160,7 +160,7 @@ function Group({
           type="button"
           onClick={onAdd}
           aria-label={addLabel ?? `Add ${label}`}
-          className="rounded p-1 text-ink-muted hover:bg-choice hover:text-ink"
+          className="rounded p-1 text-ink-muted hover:bg-muted hover:text-ink"
         >
           <Plus width={15} height={15} />
         </button>
@@ -172,7 +172,7 @@ function Group({
         <button
           type="button"
           onClick={onAdd}
-          className="mt-1 flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-ink-muted hover:bg-choice hover:text-ink"
+          className="mt-1 flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-ink-muted hover:bg-muted hover:text-ink"
         >
           <Plus width={15} height={15} />
           {addLabel}
@@ -212,7 +212,7 @@ function Chip({
         className={cn(
           "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left",
           "cursor-grab active:cursor-grabbing",
-          selected ? "bg-choice-selected" : "hover:bg-choice",
+          selected ? "bg-muted-strong" : "hover:bg-muted",
         )}
       >
         <span

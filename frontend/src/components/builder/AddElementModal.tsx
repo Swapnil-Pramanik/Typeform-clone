@@ -149,7 +149,7 @@ function BlockButton({
       className={cn(
         "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px]",
         block.supported
-          ? "text-ink hover:bg-choice"
+          ? "text-ink hover:bg-muted"
           : "cursor-not-allowed text-ink-faint/70",
       )}
     >

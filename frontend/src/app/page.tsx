@@ -1,41 +1,47 @@
 "use client";
 
 /**
- * The dashboard: workspace sidebar beside the form list.
+ * The dashboard.
  *
- * Built last on purpose — it is the lowest-weighted screen in the brief, and the
- * hours it would have taken first went into the respondent flow instead.
+ * Chrome is laid out the way the real product lays it out: a full-width account
+ * bar, a full-width workspace nav beneath it, then the sidebar and workspace
+ * pane side by side below both. The page itself only wires those pieces to the
+ * form list; each one owns its own presentation.
  */
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { EmptyWorkspace } from "@/components/dashboard/EmptyWorkspace";
 import { FormTable } from "@/components/dashboard/FormTable";
 import { Sidebar } from "@/components/dashboard/Sidebar";
+import { TopBar } from "@/components/dashboard/TopBar";
+import {
+  WorkspaceHeader,
+  type Layout,
+  type SortKey,
+} from "@/components/dashboard/WorkspaceHeader";
+import {
+  WorkspaceTabs,
+  type WorkspaceTabName,
+} from "@/components/dashboard/WorkspaceTabs";
 import { Button } from "@/components/ui/Button";
 import { ComingSoon } from "@/components/ui/ComingSoon";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Grid, List, Plus } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { LoadingPane } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { cn } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
 import { useFormActions, useForms } from "@/lib/queries";
 import type { FormSummary } from "@/types";
-
-const WORKSPACE_TABS = ["Forms", "Contacts", "Automations", "Insights"] as const;
-type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
-
-type SortKey = "updated" | "name" | "responses";
 
 export default function DashboardPage() {
   const router = useRouter();
   const toast = useToast();
 
-  const [tab, setTab] = useState<WorkspaceTab>("Forms");
+  const [tab, setTab] = useState<WorkspaceTabName>("Forms");
   const [search, setSearch] = useState("");
-  const [layout, setLayout] = useState<"list" | "grid">("list");
+  const [layout, setLayout] = useState<Layout>("list");
   const [sort, setSort] = useState<SortKey>("updated");
   const [pendingDelete, setPendingDelete] = useState<FormSummary | null>(null);
 
@@ -60,6 +66,8 @@ export default function DashboardPage() {
     if (sort === "name") return list.sort((a, b) => a.title.localeCompare(b.title));
     if (sort === "responses")
       return list.sort((a, b) => b.response_count - a.response_count);
+    if (sort === "created")
+      return list.sort((a, b) => b.created_at.localeCompare(a.created_at));
     return list;
   }, [forms, sort]);
 
@@ -105,126 +113,77 @@ export default function DashboardPage() {
     });
 
   return (
-    <div className="flex h-dvh bg-bg">
-      <Sidebar
-        search={search}
-        onSearch={setSearch}
-        onCreate={() => void create()}
-        creating={actions.create.isPending}
-        responsesCollected={responsesCollected}
-        formCount={forms?.length ?? 0}
-      />
+    <div className="flex h-dvh flex-col bg-canvas">
+      <TopBar />
+      <WorkspaceTabs active={tab} onSelect={setTab} />
 
-      <main className="tf-scrollbar flex-1 overflow-y-auto">
-        <nav className="flex gap-1 border-b border-line px-6">
-          {WORKSPACE_TABS.map((name) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => setTab(name)}
-              className={cn(
-                "-mb-px border-b-2 px-3 py-3 text-[13px] font-medium transition-colors",
-                tab === name
-                  ? "border-accent text-ink"
-                  : "border-transparent text-ink-muted hover:text-ink",
-              )}
-            >
-              {name}
-            </button>
-          ))}
-        </nav>
+      <div className="flex min-h-0 flex-1">
+        <Sidebar
+          search={search}
+          onSearch={setSearch}
+          onCreate={() => void create()}
+          creating={actions.create.isPending}
+          responsesCollected={responsesCollected}
+          formCount={forms?.length ?? 0}
+        />
 
-        {tab !== "Forms" ? (
-          <div className="p-10">
-            <ComingSoon
-              title={tab}
-              description={`${tab} is part of the real product's workspace nav. It is a placement in this build, not a feature.`}
-            />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4 p-6">
-            <header className="flex flex-wrap items-center justify-between gap-3">
-              <h1 className="text-lg font-medium text-ink">My workspace</h1>
-
-              <div className="flex items-center gap-2">
-                <select
-                  aria-label="Sort forms"
-                  value={sort}
-                  onChange={(event) => setSort(event.target.value as SortKey)}
-                  className="rounded-lg border border-line bg-panel px-2.5 py-1.5 text-[13px] text-ink"
-                >
-                  <option value="updated">Last updated</option>
-                  <option value="name">Name</option>
-                  <option value="responses">Responses</option>
-                </select>
-
-                <div className="flex rounded-lg bg-choice p-0.5">
-                  {(
-                    [
-                      ["list", List],
-                      ["grid", Grid],
-                    ] as const
-                  ).map(([name, Icon]) => (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => setLayout(name)}
-                      aria-label={`${name} view`}
-                      aria-pressed={layout === name}
-                      className={cn(
-                        "rounded-md p-1.5 transition-colors",
-                        layout === name ? "bg-bg text-ink shadow-sm" : "text-ink-muted",
-                      )}
-                    >
-                      <Icon width={15} height={15} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </header>
-
-            {isLoading ? (
-              <LoadingPane label="Loading your forms" />
-            ) : error ? (
-              <EmptyState
-                title="Couldn’t load your forms"
-                description={errorMessage(error)}
-                action={
-                  <Button variant="secondary" onClick={() => void refetch()}>
-                    Try again
-                  </Button>
-                }
+        <main className="tf-scrollbar flex min-w-0 flex-1 flex-col overflow-y-auto">
+          {tab !== "Forms" ? (
+            <div className="p-10">
+              <ComingSoon
+                title={tab}
+                description={`${tab} is part of the real product's workspace nav. It is a placement in this build, not a feature.`}
               />
-            ) : sorted.length === 0 ? (
-              <EmptyState
-                title={search ? "No forms match that search" : "No forms yet"}
-                description={
-                  search
-                    ? "Try a different name."
-                    : "Create your first form and publish it to a shareable link."
-                }
-                action={
-                  !search && (
-                    <Button onClick={() => void create()}>
-                      <Plus width={16} height={16} />
-                      Create form
-                    </Button>
-                  )
-                }
-              />
-            ) : (
-              <FormTable
-                forms={sorted}
+            </div>
+          ) : (
+            <>
+              <WorkspaceHeader
+                title="My workspace"
+                sort={sort}
+                onSort={setSort}
                 layout={layout}
-                onCopyLink={(form) => void copyLink(form)}
-                onRename={(form) => void rename(form)}
-                onDuplicate={(form) => void duplicate(form)}
-                onDelete={setPendingDelete}
+                onLayout={setLayout}
               />
-            )}
-          </div>
-        )}
-      </main>
+
+              {isLoading ? (
+                <LoadingPane label="Loading your forms" />
+              ) : error ? (
+                <div className="p-6">
+                  <EmptyState
+                    title="Couldn’t load your forms"
+                    description={errorMessage(error)}
+                    action={
+                      <Button variant="secondary" onClick={() => void refetch()}>
+                        Try again
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : sorted.length === 0 && search ? (
+                <div className="p-6">
+                  <EmptyState
+                    title="No forms match that search"
+                    description="Try a different name."
+                  />
+                </div>
+              ) : sorted.length === 0 ? (
+                <EmptyWorkspace onCreate={() => void create()} />
+              ) : (
+                <div className="p-6">
+                  <FormTable
+                    forms={sorted}
+                    layout={layout}
+                    onCopyLink={(form) => void copyLink(form)}
+                    onRename={(form) => void rename(form)}
+                    onDuplicate={(form) => void duplicate(form)}
+                    onDelete={setPendingDelete}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
 
       <Modal
         open={Boolean(pendingDelete)}

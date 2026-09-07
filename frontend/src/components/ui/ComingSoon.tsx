@@ -17,7 +17,7 @@ export function ComingSoon({
 }) {
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-xl border border-line bg-panel px-8 py-14 text-center">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-choice text-ink-muted">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-ink-muted">
         <Lock width={20} height={20} />
       </span>
       <div>
@@ -29,7 +29,7 @@ export function ComingSoon({
           {items.map((item) => (
             <li
               key={item}
-              className="rounded-full border border-line bg-choice px-3 py-1 text-xs text-ink-muted"
+              className="rounded-full border border-line bg-muted px-3 py-1 text-xs text-ink-muted"
             >
               {item}
             </li>

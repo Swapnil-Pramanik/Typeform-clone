@@ -71,7 +71,7 @@ export function FormTable({ forms, layout, ...actions }: FormTableProps) {
             <tr
               key={form.id}
               onClick={() => open(form)}
-              className="cursor-pointer border-b border-line last:border-0 hover:bg-choice"
+              className="cursor-pointer border-b border-line last:border-0 hover:bg-muted"
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -122,7 +122,7 @@ function StatusPill({ status }: { status: FormSummary["status"] }) {
         "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
         status === "published"
           ? "bg-success/10 text-success"
-          : "bg-choice text-ink-muted",
+          : "bg-muted text-ink-muted",
       )}
     >
       {status}

@@ -115,7 +115,7 @@ export function DropdownInput({
                 onClick={() => choose(option.id)}
                 className={cn(
                   "w-full px-4 py-2.5 text-left text-[15px]",
-                  index === highlighted ? "bg-choice-hover" : "hover:bg-choice",
+                  index === highlighted ? "bg-muted" : "hover:bg-muted",
                 )}
               >
                 {option.label}

@@ -77,7 +77,7 @@ function QuestionCard({ question }: { question: QuestionStats }) {
                     {choice.count} · {percent(share)}
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-choice">
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-accent"
                     style={{ width: `${Math.max(share * 100, choice.count ? 2 : 0)}%` }}
@@ -105,7 +105,7 @@ function QuestionCard({ question }: { question: QuestionStats }) {
           {question.samples.map((sample, index) => (
             <li
               key={`${index}-${sample.slice(0, 12)}`}
-              className="rounded-lg bg-choice px-3 py-2 text-[12px] text-ink"
+              className="rounded-lg bg-muted px-3 py-2 text-[12px] text-ink"
             >
               “{sample}”
             </li>
@@ -118,7 +118,7 @@ function QuestionCard({ question }: { question: QuestionStats }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-choice py-2">
+    <div className="rounded-lg bg-muted py-2">
       <dt className="text-[10px] uppercase tracking-wide text-ink-faint">{label}</dt>
       <dd className="text-sm font-medium tabular-nums text-ink">{value}</dd>
     </div>
