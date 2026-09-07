@@ -4,6 +4,7 @@ Vercel's Python runtime looks for a module-level ``FastAPI`` instance named
 ``app``; ``pyproject.toml`` points its entrypoint here.
 """
 
+import hashlib
 import logging
 
 from fastapi import FastAPI
@@ -85,6 +86,14 @@ def health() -> dict[str, object]:
         "auth_token_length": len(token),
         "auth_token_segments": len(token.split(".")) if token else 0,
         "auth_token_clean": token == token.strip().strip("\"'"),
+        # A one-way fingerprint, so a deployed instance can be compared against a
+        # known-good value without either side revealing the credential.
+        "auth_token_fingerprint": (
+            hashlib.sha256(token.encode()).hexdigest()[:8] if token else None
+        ),
+        # The Turso hostname is useless without a token, and a wrong host looks
+        # identical to a wrong credential from the outside.
+        "host": url.host,
     }
 
     try:
