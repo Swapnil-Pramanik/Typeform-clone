@@ -16,10 +16,18 @@ import { Toggle } from "@/components/builder/Toggle";
 import { ChevronDown, Lock, Sparkle, Trash } from "@/components/ui/icons";
 import { cn } from "@/lib/format";
 import { ANSWER_TYPES, BLOCKS, isChoiceType } from "@/lib/questionTypes";
-import type { Question, QuestionType } from "@/types";
+import type {
+  Question,
+  QuestionType,
+  WelcomeScreen as WelcomeScreenData,
+} from "@/types";
 
 interface SettingsPanelProps {
   question: Question | null;
+  /** Set when the welcome screen is selected rather than a question. */
+  welcome?: WelcomeScreenData | null;
+  onWelcomePatch?: (patch: Partial<WelcomeScreenData>) => void;
+  onWelcomeRemove?: () => void;
   onPatch: (patch: {
     type?: QuestionType;
     required?: boolean;
@@ -30,7 +38,18 @@ interface SettingsPanelProps {
 
 const RATING_SCALES = [3, 4, 5, 7, 10];
 
-export function SettingsPanel({ question, onPatch, onDelete }: SettingsPanelProps) {
+export function SettingsPanel({
+  question,
+  onPatch,
+  onDelete,
+  welcome,
+  onWelcomePatch,
+  onWelcomeRemove,
+}: SettingsPanelProps) {
+  if (welcome && onWelcomePatch && onWelcomeRemove) {
+    return <WelcomeSettings welcome={welcome} onPatch={onWelcomePatch} onRemove={onWelcomeRemove} />;
+  }
+
   if (!question) {
     return <aside className="w-[300px] shrink-0 border-l-2 border-groove bg-panel" />;
   }
@@ -222,5 +241,74 @@ function SegmentedControl({ options }: { options: string[] }) {
         </button>
       ))}
     </div>
+  );
+}
+
+
+/** The welcome screen's own options: button label and the "Takes X minutes" line. */
+function WelcomeSettings({
+  welcome,
+  onPatch,
+  onRemove,
+}: {
+  welcome: WelcomeScreenData;
+  onPatch: (patch: Partial<WelcomeScreenData>) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <aside className="tf-scrollbar flex w-[300px] shrink-0 flex-col overflow-y-auto border-l-2 border-groove bg-panel">
+      <div className="flex-1">
+        <Section title="Welcome screen">
+          <p className="text-[12px] leading-relaxed text-ink-muted">
+            Shown once, before the first question. Edit its copy in the preview.
+          </p>
+        </Section>
+
+        <Section title="Button label">
+          <input
+            value={welcome.button_text ?? ""}
+            onChange={(event) => onPatch({ button_text: event.target.value })}
+            placeholder="Start"
+            aria-label="Button label"
+            className="w-full rounded-lg border border-line-strong bg-bg px-3 py-2 text-[13px] text-ink"
+          />
+        </Section>
+
+        <Section title="Estimated time">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={120}
+              value={welcome.estimated_minutes ?? ""}
+              onChange={(event) =>
+                onPatch({
+                  estimated_minutes: event.target.value
+                    ? Number(event.target.value)
+                    : undefined,
+                })
+              }
+              aria-label="Estimated minutes"
+              className="w-20 rounded-lg border border-line-strong bg-bg px-3 py-2 text-[13px] text-ink"
+            />
+            <span className="text-[13px] text-ink-muted">minutes</span>
+          </div>
+          <p className="mt-1.5 text-[11px] text-ink-faint">
+            Leave empty to hide the line.
+          </p>
+        </Section>
+      </div>
+
+      <div className="border-t border-line p-3">
+        <button
+          type="button"
+          onClick={onRemove}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-line-strong px-3 py-2 text-[13px] font-medium text-danger hover:bg-danger/5"
+        >
+          <Trash width={14} height={14} />
+          Remove welcome screen
+        </button>
+      </div>
+    </aside>
   );
 }

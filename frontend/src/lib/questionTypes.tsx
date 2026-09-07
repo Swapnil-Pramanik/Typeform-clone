@@ -44,6 +44,12 @@ export interface BlockMeta {
    */
   defaultTitle?: string;
   defaultSettings?: QuestionSettings;
+  /**
+   * Set for blocks that are not question rows. The welcome screen lives in
+   * `forms.welcome_screen`, so picking it takes a different path than adding a
+   * question — the modal needs to know which.
+   */
+  action?: "welcome";
 }
 
 export const BLOCKS: Record<QuestionType, BlockMeta> = {
@@ -115,6 +121,15 @@ export const BLOCKS: Record<QuestionType, BlockMeta> = {
   },
 };
 
+/** The welcome screen: form-level JSON rather than a question row. */
+export const WELCOME_BLOCK: BlockMeta = {
+  label: "Welcome Screen",
+  icon: TypeWelcome,
+  supported: true,
+  tint: "#0891b2",
+  action: "welcome",
+};
+
 const unsupported = (
   label: string,
   icon: ComponentType<SVGProps<SVGSVGElement>>,
@@ -175,7 +190,7 @@ export const BLOCK_GROUPS: BlockGroup[] = [
   {
     name: "Structural",
     blocks: [
-      unsupported("Welcome Screen", TypeWelcome),
+      WELCOME_BLOCK,
       unsupported("Statement", TypeLongText),
       unsupported("Question Group", TypeChoice),
       BLOCKS.ending,

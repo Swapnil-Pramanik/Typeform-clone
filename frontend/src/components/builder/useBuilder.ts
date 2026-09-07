@@ -16,7 +16,7 @@ import { useCallback, useRef, useState } from "react";
 import { api, type QuestionPatch } from "@/lib/api";
 import { useDebouncedCallback } from "@/lib/hooks";
 import { keys, useFormQuery } from "@/lib/queries";
-import type { Form, Question, QuestionType } from "@/types";
+import type { Form, Question, QuestionType, WelcomeScreen } from "@/types";
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -24,6 +24,8 @@ const AUTOSAVE_MS = 600;
 
 interface FormPatch {
   title?: string;
+  /** The welcome screen is form-level JSON, not a question row. */
+  welcome_screen?: WelcomeScreen | null;
 }
 
 export function useBuilder(formId: number) {

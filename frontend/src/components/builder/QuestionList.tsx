@@ -27,27 +27,37 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import { Plus } from "@/components/ui/icons";
+import { Plus, TypeWelcome } from "@/components/ui/icons";
 import { cn } from "@/lib/format";
 import { BLOCKS } from "@/lib/questionTypes";
-import type { Question } from "@/types";
+import {
+  WELCOME as selectionWelcome,
+  question as selectionQuestion,
+  type Selection,
+} from "@/components/builder/selection";
+import type { Question, WelcomeScreen as WelcomeScreenData } from "@/types";
 
 interface QuestionListProps {
   questions: Question[];
-  selectedId: number | null;
-  onSelect: (id: number) => void;
+  selected: Selection;
+  onSelect: (selection: Selection) => void;
   onReorder: (orderedIds: number[]) => void;
   onAddContent: () => void;
   onAddEnding: () => void;
+  /** Null when the form has no welcome screen yet. */
+  welcome: WelcomeScreenData | null;
+  onAddWelcome: () => void;
 }
 
 export function QuestionList({
   questions,
-  selectedId,
+  selected,
   onSelect,
   onReorder,
   onAddContent,
   onAddEnding,
+  welcome,
+  onAddWelcome,
 }: QuestionListProps) {
   const pages = questions.filter((question) => question.type !== "ending");
   const endings = questions.filter((question) => question.type === "ending");
@@ -82,6 +92,41 @@ export function QuestionList({
   return (
     <aside className="tf-scrollbar flex w-[268px] shrink-0 flex-col gap-5 overflow-y-auto border-r-2 border-groove bg-rail p-3">
       <Group
+        label="Welcome"
+        count={welcome ? 1 : 0}
+        onAdd={onAddWelcome}
+      >
+        {welcome ? (
+          <li className="list-none">
+            <button
+              type="button"
+              onClick={() => onSelect(selectionWelcome)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left",
+                selected.kind === "welcome" ? "bg-muted-strong" : "hover:bg-muted",
+              )}
+            >
+              <span
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-semibold text-white"
+                style={{ backgroundColor: "#0891b2" }}
+                aria-hidden="true"
+              >
+                ★
+              </span>
+              <TypeWelcome width={14} height={14} className="shrink-0 text-ink-faint" />
+              <span className="flex-1 truncate text-[13px] text-ink">
+                {welcome.title || "Welcome screen"}
+              </span>
+            </button>
+          </li>
+        ) : (
+          <li className="list-none px-2 py-1 text-[12px] text-ink-faint">
+            No welcome screen
+          </li>
+        )}
+      </Group>
+
+      <Group
         label="Pages"
         count={pages.length}
         onAdd={onAddContent}
@@ -102,8 +147,10 @@ export function QuestionList({
                 key={question.id}
                 question={question}
                 badge={String(index + 1)}
-                selected={question.id === selectedId}
-                onSelect={() => onSelect(question.id)}
+                selected={
+                  selected.kind === "question" && selected.id === question.id
+                }
+                onSelect={() => onSelect(selectionQuestion(question.id))}
               />
             ))}
           </SortableContext>
@@ -126,8 +173,10 @@ export function QuestionList({
                 key={question.id}
                 question={question}
                 badge={String.fromCharCode(65 + index)}
-                selected={question.id === selectedId}
-                onSelect={() => onSelect(question.id)}
+                selected={
+                  selected.kind === "question" && selected.id === question.id
+                }
+                onSelect={() => onSelect(selectionQuestion(question.id))}
               />
             ))}
           </SortableContext>

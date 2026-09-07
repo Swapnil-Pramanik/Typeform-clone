@@ -15,6 +15,12 @@ import { PreviewPane } from "@/components/builder/PreviewPane";
 import { QuestionList } from "@/components/builder/QuestionList";
 import { SaveIndicator } from "@/components/builder/SaveIndicator";
 import { SettingsPanel } from "@/components/builder/SettingsPanel";
+import {
+  WELCOME,
+  question as questionSelection,
+  selectedQuestion,
+  type Selection,
+} from "@/components/builder/selection";
 import { useBuilder } from "@/components/builder/useBuilder";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingPane } from "@/components/ui/Spinner";
@@ -32,19 +38,27 @@ export default function BuilderPage({
   const builder = useBuilder(formId);
   const toast = useToast();
 
-  const [chosenId, setChosenId] = useState<number | null>(null);
+  const [chosen, setChosen] = useState<Selection | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
   const questions = useMemo(
     () => builder.form?.questions ?? [],
     [builder.form?.questions],
   );
+  const welcome = builder.form?.welcome_screen ?? null;
 
   // The selection is derived, not synchronised: after a delete or a reload the
-  // chosen block may be gone, and falling back to the first one needs no effect.
-  const selected =
-    questions.find((question) => question.id === chosenId) ?? questions[0] ?? null;
-  const selectedId = selected?.id ?? null;
+  // chosen block may be gone, and falling back needs no effect.
+  const fallback: Selection = questions[0]
+    ? questionSelection(questions[0].id)
+    : WELCOME;
+  const chosenIsValid =
+    chosen !== null &&
+    (chosen.kind === "welcome"
+      ? welcome !== null
+      : questions.some((q) => q.id === chosen.id));
+  const selection = chosenIsValid ? chosen : fallback;
+  const selected = selectedQuestion(selection, questions);
   const pages = questions.filter((question) => question.type !== "ending");
   const badgeIndex =
     selected && selected.type !== "ending"
@@ -70,7 +84,7 @@ export default function BuilderPage({
         meta.defaultTitle ?? "",
         meta.defaultSettings,
       );
-      setChosenId(created.id);
+      setChosen(questionSelection(created.id));
     });
 
   const removeSelected = () =>
@@ -81,6 +95,14 @@ export default function BuilderPage({
     });
 
   const reorder = (ids: number[]) => run(() => builder.reorder(ids));
+
+  /** Adding a welcome screen is a form patch, not a new question row. */
+  const addWelcome = () => {
+    builder.patchForm({
+      welcome_screen: welcome ?? { title: "", description: "", button_text: "Start" },
+    });
+    setChosen(WELCOME);
+  };
 
   return (
     <FormShell formId={formId} headerSlot={<SaveIndicator state={builder.saveState} />}>
@@ -99,8 +121,10 @@ export default function BuilderPage({
         <>
           <QuestionList
             questions={questions}
-            selectedId={selectedId}
-            onSelect={setChosenId}
+            selected={selection}
+            onSelect={setChosen}
+            welcome={welcome}
+            onAddWelcome={addWelcome}
             onReorder={(ids) => void reorder(ids)}
             onAddContent={() => setAddOpen(true)}
             onAddEnding={() => void addBlock("ending")}
@@ -110,18 +134,32 @@ export default function BuilderPage({
             question={selected}
             index={badgeIndex}
             onPatch={(patch) => selected && builder.patchQuestion(selected.id, patch)}
+            welcome={selection.kind === "welcome" ? welcome : null}
+            onWelcomePatch={(patch) =>
+              builder.patchForm({ welcome_screen: { ...welcome, ...patch } })
+            }
+            formTitle={builder.form?.title ?? ""}
           />
 
           <SettingsPanel
             question={selected}
             onPatch={(patch) => selected && builder.patchQuestion(selected.id, patch)}
             onDelete={() => void removeSelected()}
+            welcome={selection.kind === "welcome" ? welcome : null}
+            onWelcomePatch={(patch) =>
+              builder.patchForm({ welcome_screen: { ...welcome, ...patch } })
+            }
+            onWelcomeRemove={() => {
+              builder.patchForm({ welcome_screen: null });
+              setChosen(null);
+            }}
           />
 
           <AddElementModal
             open={addOpen}
             onClose={() => setAddOpen(false)}
             onPick={(type) => void addBlock(type)}
+            onPickWelcome={addWelcome}
           />
         </>
       )}

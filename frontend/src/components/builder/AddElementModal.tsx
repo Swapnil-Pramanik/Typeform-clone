@@ -23,9 +23,16 @@ interface AddElementModalProps {
   open: boolean;
   onClose: () => void;
   onPick: (type: QuestionType) => void;
+  /** The welcome screen is form data, so it is added by a different route. */
+  onPickWelcome: () => void;
 }
 
-export function AddElementModal({ open, onClose, onPick }: AddElementModalProps) {
+export function AddElementModal({
+  open,
+  onClose,
+  onPick,
+  onPickWelcome,
+}: AddElementModalProps) {
   const [tab, setTab] = useState<Tab>(TABS[0]);
   const [query, setQuery] = useState("");
 
@@ -41,8 +48,10 @@ export function AddElementModal({ open, onClose, onPick }: AddElementModalProps)
   }, [query]);
 
   const choose = (block: BlockMeta) => {
-    if (!block.supported || !block.type) return;
-    onPick(block.type);
+    if (!block.supported) return;
+    if (block.action === "welcome") onPickWelcome();
+    else if (block.type) onPick(block.type);
+    else return;
     onClose();
     setQuery("");
   };
