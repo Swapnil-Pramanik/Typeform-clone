@@ -2,7 +2,7 @@
 
 /** Small hooks with no server-state involvement. */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 /**
  * Window-level key handling for the respondent flow.
@@ -17,7 +17,11 @@ export function useHotkeys(
   enabled = true,
 ): void {
   const latest = useRef(handler);
-  latest.current = handler;
+  // Written in an effect rather than during render, so the ref is only ever
+  // mutated after the render it belongs to has committed.
+  useEffect(() => {
+    latest.current = handler;
+  });
 
   useEffect(() => {
     if (!enabled) return;
@@ -47,9 +51,11 @@ export function useDebouncedCallback<T>(
   delay = 600,
 ): (value: T) => void {
   const latest = useRef(onFlush);
-  latest.current = onFlush;
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    latest.current = onFlush;
+  });
 
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
@@ -66,24 +72,33 @@ export function useDebouncedCallback<T>(
   );
 }
 
+/** Subscribe to a media query as an external store — no state, no effect. */
+function subscribeToMedia(query: string) {
+  return (onChange: () => void) => {
+    const media = window.matchMedia(query);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  };
+}
+
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+
 /** `prefers-reduced-motion`, watched live so a mid-session change is honoured. */
 export function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-
-  useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(query.matches);
-    const onChange = (event: MediaQueryListEvent) => setReduced(event.matches);
-    query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
-  }, []);
-
-  return reduced;
+  return useSyncExternalStore(
+    subscribeToMedia(REDUCED_MOTION),
+    () => window.matchMedia(REDUCED_MOTION).matches,
+    () => false, // the server cannot know; assume motion is fine
+  );
 }
+
+const noopSubscribe = () => () => {};
 
 /** True once the component has mounted on the client. */
 export function useMounted(): boolean {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return mounted;
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
 }

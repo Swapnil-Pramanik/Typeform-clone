@@ -8,7 +8,7 @@
  * has to know which way the respondent is travelling.
  */
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { validateAnswer } from "@/lib/validation";
 import type { AnswerValue, PublicForm, Question } from "@/types";
@@ -64,7 +64,9 @@ export function useFormFlow(form: PublicForm): FormFlow {
    * through a ref makes every caller — timers included — see the latest answers.
    */
   const stateRef = useRef(state);
-  stateRef.current = state;
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const current = questions[state.index];
   const isLast = state.index === questions.length - 1;
