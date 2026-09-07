@@ -626,7 +626,10 @@ Notes worth stating:
 
 The workspace is not a flat, full-bleed layout. The **account bar sits directly
 on the white page**, and everything below it lives in a **rounded shell inset
-~16px from the window edges** (`rounded-[10px]`, on the `#f7f7f8` ground). Inside
+16px from the window edges** on the `#f7f7f8` ground. Its radius is
+`14px` — deliberately larger than the 8px on the pills and buttons it
+contains, because a container rounded *less* than the controls inside it
+reads as a square box with chipped corners. Inside
 that shell, panels are divided by **2px white grooves** rather than grey rules —
 the sidebar's right edge, the tabs row's bottom edge and the sidebar's own
 section breaks all read as gaps cut through the grey, which is why they get their

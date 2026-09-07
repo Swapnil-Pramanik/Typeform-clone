@@ -123,14 +123,18 @@ export default function DashboardPage() {
   return (
     /*
      * The account bar sits directly on the page; everything below it lives in a
-     * rounded shell inset from the window edges, which is how the real product
-     * frames the workspace. The shell clips its own corners, so the sidebar and
-     * the tabs row can run edge to edge inside it.
+     * rounded shell inset evenly from the window edges, which is how the real
+     * product frames the workspace. The shell clips its own corners, so the
+     * sidebar and the tabs row can run edge to edge inside it.
+     *
+     * The radius is deliberately larger than the controls it contains (14px vs
+     * the 8px on pills and buttons): a container rounded *less* than the things
+     * inside it reads as a square box with chipped corners.
      */
     <div className="flex h-dvh flex-col bg-bg">
       <TopBar />
 
-      <div className="mx-4 mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[10px] bg-canvas">
+      <div className="mx-4 mb-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] bg-canvas">
         <WorkspaceTabs active={tab} onSelect={setTab} />
 
         <div className="flex min-h-0 flex-1">
