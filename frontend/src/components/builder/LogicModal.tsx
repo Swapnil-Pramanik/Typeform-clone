@@ -28,6 +28,7 @@ import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import {
   Branch,
   Calculator,
+  CaretDown,
   CaretUp,
   Eye,
   Info,
@@ -376,15 +377,30 @@ function Section({
   title: string;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(true);
+
   return (
     <section className="rounded-xl border border-line p-4">
-      <div className="mb-3 flex items-center gap-2">
+      {/* The whole header toggles, not just the caret: a 16px hit target for
+          something this easy to aim at would be needlessly fiddly. */}
+      <button
+        type="button"
+        onClick={() => setOpen((previous) => !previous)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 text-left"
+      >
         <Icon width={16} height={16} className="shrink-0 text-ink-muted" />
         <h3 className="text-[15px] font-medium text-ink">{title}</h3>
         <Info width={14} height={14} className="shrink-0 text-ink-faint" />
-        <CaretUp width={14} height={14} className="ml-auto shrink-0 text-ink-faint" />
-      </div>
-      <div className="flex flex-col gap-3">{children}</div>
+        <span className="ml-auto shrink-0 text-ink-faint">
+          {open ? (
+            <CaretUp width={14} height={14} />
+          ) : (
+            <CaretDown width={14} height={14} />
+          )}
+        </span>
+      </button>
+      {open && <div className="mt-3 flex flex-col gap-3">{children}</div>}
     </section>
   );
 }
