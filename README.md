@@ -851,8 +851,11 @@ retention job; at this scale it is a few rows.
 `question_type` are. Renaming an *option* after collecting responses changes the
 label shown for old answers. Snapshotting labels too would be the next step.
 
-**6. Choice counts use a `LIKE` over a JSON array.** Correct and fast enough for
-realistic option lists; a join table would be the scale answer.
+**6. Choice counts are tallied in Python, not by the database.** `option_ids` is
+a JSON array, so there is nothing for SQL to group on. One query per form brings
+back the selections and they are counted in memory. A join table would let the
+database do it, at the cost of a sixth table; every other statistic in the
+summary is a real SQL aggregate.
 
 **7. Partial responses come from a `visibilitychange` beacon.** Browsers do not
 guarantee an unload beacon fires, so the completion rate is a good indicator, not
@@ -883,6 +886,12 @@ unfinished.
 nav reads Content · Workflow · Connect. This keeps the same shape but gives the
 results view a home, which the assignment explicitly asks for.
 
-**10. Theme colours are stored per form but not yet editable.** `forms.theme`
+**10. The welcome screen is form-level data, not a question row.** It lives in
+`forms.welcome_screen` as JSON, so the builder's selection is a discriminated
+union rather than a question ID, and adding one is a form patch. Endings went the
+other way — they *are* question rows — because a form may have several and they
+need positions; a form has at most one welcome screen.
+
+**11. Theme colours are stored per form but not yet editable.** `forms.theme`
 holds JSON and the seed populates it; a colour picker in the settings panel is
 the remaining work, and the schema needs no change for it.
