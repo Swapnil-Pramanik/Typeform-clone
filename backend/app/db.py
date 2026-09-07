@@ -3,11 +3,24 @@
 from collections.abc import Iterator
 
 from sqlalchemy import create_engine, event
+from sqlalchemy.dialects import registry
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import settings
+
+# ``sqlalchemy-libsql`` normally advertises the ``sqlite+libsql`` dialect through
+# a setuptools entry point. Vercel vendors dependencies into its own ``_vendor``
+# directory, where that metadata is not discovered, so the dialect never
+# registers and ``create_engine`` dies with
+# ``NoSuchModuleError: Can't load plugin: sqlalchemy.dialects:sqlite.libsql``.
+#
+# Registering it by hand is lazy — the module is imported only when a libsql URL
+# is actually used — so this is harmless everywhere the entry point does work.
+registry.register(
+    "sqlite.libsql", "sqlalchemy_libsql.libsql", "SQLiteDialect_libsql"
+)
 
 
 class Base(DeclarativeBase):

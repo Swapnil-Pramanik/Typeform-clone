@@ -742,6 +742,17 @@ set -a && . ./.env.production && set +a
   argument — so a token left in the URL is rejected as an *"empty JWT token"*.
   `DATABASE_AUTH_TOKEN` is passed through `connect_args` instead; nothing else in
   the app has to know.
+* The driver **segfaults on CPython 3.14**, which is why `requires-python` caps
+  at `<3.14` and the local venv is 3.12, matching Vercel's runtime.
+* Vercel vendors dependencies into its own `_vendor/` directory, where setuptools
+  entry points are not discovered — so `sqlalchemy-libsql` never advertises the
+  `sqlite+libsql` dialect and `create_engine` dies with
+  `NoSuchModuleError: Can't load plugin: sqlalchemy.dialects:sqlite.libsql`.
+  `db.py` registers the dialect explicitly, which is lazy and therefore harmless
+  in environments where the entry point does work.
+* Vercel loads the serverless entrypoint **by file path**, putting that file's own
+  directory on `sys.path` rather than the backend root, so `import app.*` fails.
+  `api/index.py` prepends the root before importing anything.
 
 Set `CORS_ORIGINS` on the backend project to the deployed frontend origin plus
 `http://localhost:3000`.
