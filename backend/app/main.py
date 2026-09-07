@@ -4,6 +4,8 @@ Vercel's Python runtime looks for a module-level ``FastAPI`` instance named
 ``app``; ``pyproject.toml`` points its entrypoint here.
 """
 
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -17,6 +19,8 @@ from app.routers import (
     questions_router,
     responses_router,
 )
+
+logger = logging.getLogger("typeform.health")
 
 app = FastAPI(
     title="Typeform Clone API",
@@ -71,9 +75,16 @@ def health() -> dict[str, object]:
     driver's error text.
     """
     url = make_url(settings.database_url)
+    token = settings.database_auth_token or ""
     database: dict[str, object] = {
         "dialect": url.drivername,
-        "auth_token_configured": bool(settings.database_auth_token),
+        "auth_token_configured": bool(token),
+        # Shape only, never content. A JWT is three dot-separated segments; a
+        # value pasted with surrounding quotes or a trailing newline shows up
+        # here as an unexpected length while still looking "configured".
+        "auth_token_length": len(token),
+        "auth_token_segments": len(token.split(".")) if token else 0,
+        "auth_token_clean": token == token.strip().strip("\"'"),
     }
 
     try:
@@ -81,6 +92,9 @@ def health() -> dict[str, object]:
             connection.execute(text("SELECT 1"))
         database["status"] = "ok"
     except Exception as error:  # noqa: BLE001 — the class is the whole signal
+        # The driver's message can name the host, so it goes to the logs rather
+        # than to an unauthenticated caller.
+        logger.exception("database probe failed")
         database["status"] = "unreachable"
         database["error"] = type(error).__name__
 
