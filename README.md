@@ -315,7 +315,7 @@ drift from what a respondent sees.
 | `schemas/response.py` | `SubmissionIn`/`SubmissionOut`, `ResponsePage`, `FormSummaryStats`. |
 | `services/forms.py` | `list_forms` (counts as correlated subqueries — one round trip), `publish_form`, `unpublish_form`, `duplicate_form`, `get_published_form`, slug minting. |
 | `services/questions.py` | `add_question` at `max(position)+1`, `update_question` (type changes in place), `delete_question` (soft), `reorder_questions`. |
-| `services/responses.py` | `submit_response` (validate → snapshot → store), `summarize_form` (database-side aggregates), `export_responses_csv` (streaming generator). |
+| `services/responses.py` | `submit_response` (validate → snapshot → store), `summarize_form` (aggregates batched one query per *kind* of question, not per question), `export_responses_csv` (streaming generator). |
 | `services/validation.py` | `validate_answer(question, raw) -> TypedValue`. The rules, written once, in a docstring the TypeScript mirror points back to. |
 | `routers/deps.py` | The session dependency and the three exception→HTTP translations. |
 | `routers/*.py` | Parse, call a service, return. |
@@ -336,7 +336,7 @@ drift from what a respondent sees.
 | `components/builder/useBuilder.ts` | Optimistic cache write + debounced flush; merges `settings` before sending, because the server replaces the whole JSON column. |
 | `components/builder/PreviewPane.tsx` | Mounts `QuestionRenderer` with the editing callbacks. |
 | `components/dashboard/RowMenu.tsx` | The row menu from the brief, verbatim, Delete red and below a separator. |
-| `components/results/SummaryPanel.tsx` | Draws bars. Every number is computed by the database. |
+| `components/results/SummaryPanel.tsx` | Draws bars. Every number arrives pre-computed; the client does no aggregation. |
 
 ---
 
@@ -472,10 +472,16 @@ select(func.avg(Answer.number_value),
 it directly, so rendering a row is one query with no per-cell type switch.
 
 **Trade-off accepted:** `option_ids` is still a JSON array, because a
-multi-select answer is genuinely multi-valued. Choice counts are therefore a
-`LIKE` over a compact array (`[3,5]`, never `[3, 5]` — hence the compact
-separators in `JSONText`). A join table would index better; at option-list scale
-it would not measurably matter, and it costs a fifth table.
+multi-select answer is genuinely multi-valued and there is nothing for SQL to
+group on. Those rows are fetched once per form and tallied in Python;
+everything else — `answered`, `AVG`/`MIN`/`MAX`, yes/no counts, and the ranked
+text verbatims — is grouped across every question in a single statement. A join
+table would let the database do that tally too, at the cost of a sixth table.
+
+The batching is not cosmetic. Production is SQLite **over HTTP**, so every
+statement is a network round trip; the summary endpoint originally issued one
+query per question and one per choice option, which is 19 round trips for a
+five-question form. It is 9 now, with byte-identical output.
 
 ### Decision 2 — answers must survive their questions
 

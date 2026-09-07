@@ -2,13 +2,14 @@
 
 import csv
 import io
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
+    CHOICE_TYPES,
     Answer,
     Form,
     Question,
@@ -28,6 +29,11 @@ from app.services.validation import AnswerValidationError, validate_answer
 
 #: How many verbatims the summary shows for free-text questions.
 TEXT_SAMPLE_LIMIT = 5
+
+#: Question types whose summary is a list of recent answers rather than counts.
+TEXT_TYPES = frozenset(
+    {QuestionType.SHORT_TEXT, QuestionType.LONG_TEXT, QuestionType.EMAIL}
+)
 
 
 def submit_response(db: Session, form: Form, payload: SubmissionIn) -> SubmissionOut:
@@ -144,106 +150,179 @@ def get_response(db: Session, response_id: int) -> Response:
 
 
 def summarize_form(db: Session, form_id: int) -> FormSummaryStats:
-    """Per-question aggregates, computed by the database.
+    """Per-question aggregates for a whole form.
 
-    This is what the typed answer columns buy: choice counts are a ``GROUP BY``
-    over ``option_ids`` membership, and rating/number statistics are ``AVG``,
-    ``MIN`` and ``MAX`` over ``number_value`` — no deserialising rows in Python.
+    Every statistic is gathered in one pass per *kind* of question rather than
+    one pass per question. That matters because the production database is
+    SQLite over HTTP: each statement is a network round trip, so a form with a
+    handful of questions was costing nineteen of them.
+
+    This is what the typed answer columns buy — ratings and numbers reduce to
+    ``AVG``/``MIN``/``MAX`` and yes/no to a ``GROUP BY``, both grouped across
+    every question at once. Multi-select is the documented exception: its
+    ``option_ids`` is a JSON array, so the rows are fetched once and tallied
+    here rather than joined against an options table this schema does not have.
     """
     form = load_form_or_raise(db, form_id)
+    questions = [q for q in form.live_questions if not q.is_ending]
 
-    total = db.scalar(
-        select(func.count(Response.id)).where(Response.form_id == form_id)
-    ) or 0
-    completed = db.scalar(
-        select(func.count(Response.id)).where(
-            Response.form_id == form_id, Response.is_complete.is_(True)
+    total, completed = db.execute(
+        select(
+            func.count(Response.id),
+            func.coalesce(func.sum(case((Response.is_complete.is_(True), 1), else_=0)), 0),
+        ).where(Response.form_id == form_id)
+    ).one()
+
+    by_id = {q.id: q for q in questions}
+    ids = list(by_id)
+    if not ids:
+        return FormSummaryStats(
+            form_id=form_id,
+            total_responses=total or 0,
+            completed_responses=completed or 0,
+            completion_rate=round((completed or 0) / total, 4) if total else 0.0,
+            questions=[],
         )
-    ) or 0
 
-    stats = [
-        _question_stats(db, question)
-        for question in form.live_questions
-        if not question.is_ending
-    ]
+    answered = _answered_counts(db, ids)
+    numeric = _numeric_stats(db, _ids_of(questions, {QuestionType.RATING, QuestionType.NUMBER}))
+    booleans = _yes_no_counts(db, _ids_of(questions, {QuestionType.YES_NO}))
+    chosen = _choice_counts(db, _ids_of(questions, CHOICE_TYPES))
+    samples = _text_samples(db, _ids_of(questions, TEXT_TYPES))
+
+    stats = []
+    for question in questions:
+        qtype = QuestionType(question.type)
+        entry = QuestionStats(
+            question_id=question.id,
+            title=question.title,
+            type=qtype,
+            answered=answered.get(question.id, 0),
+        )
+
+        if qtype in {QuestionType.RATING, QuestionType.NUMBER}:
+            average, low, high = numeric.get(question.id, (None, None, None))
+            entry.average = round(average, 2) if average is not None else None
+            entry.minimum = low
+            entry.maximum = high
+        elif qtype is QuestionType.YES_NO:
+            counts = booleans.get(question.id, {})
+            entry.choices = [
+                ChoiceCount(label="Yes", count=counts.get(True, 0)),
+                ChoiceCount(label="No", count=counts.get(False, 0)),
+            ]
+        elif qtype in CHOICE_TYPES:
+            tally = chosen.get(question.id, {})
+            entry.choices = [
+                ChoiceCount(label=option.label, count=tally.get(option.id, 0))
+                for option in question.options
+            ]
+        else:
+            entry.samples = samples.get(question.id, [])
+
+        stats.append(entry)
 
     return FormSummaryStats(
         form_id=form_id,
-        total_responses=total,
-        completed_responses=completed,
-        completion_rate=round(completed / total, 4) if total else 0.0,
+        total_responses=total or 0,
+        completed_responses=completed or 0,
+        completion_rate=round((completed or 0) / total, 4) if total else 0.0,
         questions=stats,
     )
 
 
-def _question_stats(db: Session, question: Question) -> QuestionStats:
-    qtype = QuestionType(question.type)
-    answered = db.scalar(
-        select(func.count(Answer.id)).where(Answer.question_id == question.id)
-    ) or 0
+def _ids_of(questions: list[Question], types: Collection[QuestionType]) -> list[int]:
+    return [q.id for q in questions if QuestionType(q.type) in types]
 
-    base = QuestionStats(
-        question_id=question.id,
-        title=question.title,
-        type=qtype,
-        answered=answered,
-    )
 
-    if qtype in {QuestionType.RATING, QuestionType.NUMBER}:
-        avg, low, high = db.execute(
-            select(
-                func.avg(Answer.number_value),
-                func.min(Answer.number_value),
-                func.max(Answer.number_value),
-            ).where(Answer.question_id == question.id)
-        ).one()
-        base.average = round(avg, 2) if avg is not None else None
-        base.minimum = low
-        base.maximum = high
+def _answered_counts(db: Session, ids: list[int]) -> dict[int, int]:
+    rows = db.execute(
+        select(Answer.question_id, func.count(Answer.id))
+        .where(Answer.question_id.in_(ids))
+        .group_by(Answer.question_id)
+    ).all()
+    return {question_id: count for question_id, count in rows}
 
-    elif qtype is QuestionType.YES_NO:
-        rows = db.execute(
-            select(Answer.bool_value, func.count(Answer.id))
-            .where(Answer.question_id == question.id)
-            .group_by(Answer.bool_value)
-        ).all()
-        counts = {bool(value): count for value, count in rows if value is not None}
-        base.choices = [
-            ChoiceCount(label="Yes", count=counts.get(True, 0)),
-            ChoiceCount(label="No", count=counts.get(False, 0)),
-        ]
 
-    elif qtype in {QuestionType.MULTIPLE_CHOICE, QuestionType.DROPDOWN}:
-        # option_ids is a JSON array, so membership is a LIKE over the stored
-        # text. At option-list scale that is one indexed scan per option and far
-        # cheaper than pulling every answer row into Python.
-        base.choices = [
-            ChoiceCount(
-                label=option.label,
-                count=db.scalar(
-                    select(func.count(Answer.id)).where(
-                        Answer.question_id == question.id,
-                        func.replace(func.replace(Answer.option_ids, "[", ","), "]", ",").like(
-                            f"%,{option.id},%"
-                        ),
-                    )
-                )
-                or 0,
-            )
-            for option in question.options
-        ]
-
-    else:
-        base.samples = list(
-            db.scalars(
-                select(Answer.display_value)
-                .where(Answer.question_id == question.id, Answer.display_value != "")
-                .order_by(Answer.id.desc())
-                .limit(TEXT_SAMPLE_LIMIT)
-            ).all()
+def _numeric_stats(
+    db: Session, ids: list[int]
+) -> dict[int, tuple[float | None, float | None, float | None]]:
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(
+            Answer.question_id,
+            func.avg(Answer.number_value),
+            func.min(Answer.number_value),
+            func.max(Answer.number_value),
         )
+        .where(Answer.question_id.in_(ids))
+        .group_by(Answer.question_id)
+    ).all()
+    return {question_id: (avg, low, high) for question_id, avg, low, high in rows}
 
-    return base
+
+def _yes_no_counts(db: Session, ids: list[int]) -> dict[int, dict[bool, int]]:
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(Answer.question_id, Answer.bool_value, func.count(Answer.id))
+        .where(Answer.question_id.in_(ids), Answer.bool_value.is_not(None))
+        .group_by(Answer.question_id, Answer.bool_value)
+    ).all()
+    counts: dict[int, dict[bool, int]] = {}
+    for question_id, value, count in rows:
+        counts.setdefault(question_id, {})[bool(value)] = count
+    return counts
+
+
+def _choice_counts(db: Session, ids: list[int]) -> dict[int, dict[int, int]]:
+    """Tally selected option IDs.
+
+    ``option_ids`` holds a JSON array because a multi-select answer is genuinely
+    multi-valued, so there is nothing for SQL to group on. One query brings back
+    the selections and they are counted here — cheaper than the per-option
+    ``LIKE`` scans this replaced, which cost a round trip each.
+    """
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(Answer.question_id, Answer.option_ids).where(
+            Answer.question_id.in_(ids), Answer.option_ids.is_not(None)
+        )
+    ).all()
+    counts: dict[int, dict[int, int]] = {}
+    for question_id, option_ids in rows:
+        tally = counts.setdefault(question_id, {})
+        for option_id in option_ids or []:
+            tally[option_id] = tally.get(option_id, 0) + 1
+    return counts
+
+
+def _text_samples(db: Session, ids: list[int]) -> dict[int, list[str]]:
+    """The most recent verbatims per question, ranked in the database."""
+    if not ids:
+        return {}
+    ranked = (
+        select(
+            Answer.question_id,
+            Answer.display_value,
+            func.row_number()
+            .over(partition_by=Answer.question_id, order_by=Answer.id.desc())
+            .label("rank"),
+        )
+        .where(Answer.question_id.in_(ids), Answer.display_value != "")
+        .subquery()
+    )
+    rows = db.execute(
+        select(ranked.c.question_id, ranked.c.display_value).where(
+            ranked.c.rank <= TEXT_SAMPLE_LIMIT
+        )
+    ).all()
+    samples: dict[int, list[str]] = {}
+    for question_id, value in rows:
+        samples.setdefault(question_id, []).append(value)
+    return samples
 
 
 def export_responses_csv(db: Session, form_id: int) -> Iterator[str]:
