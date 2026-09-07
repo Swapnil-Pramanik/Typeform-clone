@@ -668,6 +668,12 @@ Notes worth stating:
   the form never made it. Without this, switching to dark painted dark-mode text
   onto the form's white background and the preview stopped showing what a
   respondent gets. Measured: the flow is 9.61:1 in both modes, and identical.
+
+  The surface sets `color` as well as the variables. Redefining `--tf-ink` only
+  reaches elements that *name* the token; anything that simply inherits its
+  colour still takes `body`'s already-resolved value, which ghosted the choice
+  labels against the form's own light card. A token layer protects you only
+  where a token is actually named.
 - **Theme without a flash:** an inline script in `layout.tsx` stamps
   `data-theme` before first paint; `lib/theme.ts` exposes it as an external
   store, so `ThemeToggle` needs no effect and no mount-state.

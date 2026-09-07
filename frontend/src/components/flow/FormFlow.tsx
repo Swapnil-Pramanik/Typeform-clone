@@ -134,7 +134,8 @@ export function FormFlow({ form }: { form: PublicForm }) {
 
   return (
     <main
-      className="relative min-h-dvh overflow-hidden bg-bg font-[family-name:var(--font-form)]"
+      /* text-ink so inherited colours resolve against this surface, not <body>. */
+      className="relative min-h-dvh overflow-hidden bg-bg font-[family-name:var(--font-form)] text-ink"
       style={formSurface(form.theme)}
     >
       {flow.phase === "question" && <ProgressBar value={flow.progress} />}

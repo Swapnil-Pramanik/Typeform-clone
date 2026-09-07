@@ -51,7 +51,15 @@ function Canvas({
   return (
     <div className="tf-scrollbar flex flex-1 items-center justify-center overflow-y-auto bg-canvas p-8">
       <div
-        className="w-full max-w-2xl rounded-xl border border-line bg-bg px-10 py-14 font-[family-name:var(--font-form)] shadow-sm"
+        /*
+          `text-ink` matters as much as the variables. Redefining `--tf-ink` here
+          only reaches elements that name the token; anything that simply
+          inherits its colour would still take `body`'s already-resolved value —
+          which in dark mode ghosted the choice labels against the form's own
+          light card. Setting the colour on the surface makes inheritance land
+          on the right value too.
+        */
+        className="w-full max-w-2xl rounded-xl border border-line bg-bg px-10 py-14 font-[family-name:var(--font-form)] text-ink shadow-sm"
         style={formSurface(theme)}
       >
         {children}
