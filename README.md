@@ -195,9 +195,9 @@ drift from what a respondent sees.
 .
 ├── README.md
 ├── backend/
-│   ├── pyproject.toml               # deps; also points Vercel at app/main.py
+│   ├── pyproject.toml               # deps and the supported Python range
 │   ├── requirements.txt             # what Vercel's Python runtime installs
-│   ├── vercel.json                  # single catch-all route → the ASGI app
+│   ├── vercel.json                  # rewrites every path to api/index.py; pins bom1
 │   ├── alembic.ini
 │   ├── alembic/
 │   │   ├── env.py                   # URL from settings; JSONText → sa.Text()
@@ -703,7 +703,7 @@ key surface is exactly zero.
 | Piece | Where | Notes |
 |---|---|---|
 | Next.js frontend | Vercel | Set `NEXT_PUBLIC_API_URL` to the deployed API origin. |
-| FastAPI backend | Vercel, second project, root `backend/` | `vercel.json` routes everything to `app/main.py`, where the `FastAPI` instance is named `app`. |
+| FastAPI backend | Vercel, second project, root `backend/` | `vercel.json` rewrites every path to `api/index.py`, the serverless entrypoint that re-exports the ASGI app. |
 | Database | Turso (hosted libSQL), AWS AP South (Mumbai) | SQLite over the wire. Data survives redeploys. |
 
 **Both Vercel projects are pinned to `bom1` (Mumbai)** in their `vercel.json`,
