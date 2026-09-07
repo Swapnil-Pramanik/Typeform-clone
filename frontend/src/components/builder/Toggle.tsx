@@ -48,15 +48,22 @@ export function Toggle({
       )}
     >
       {/*
-        Anchored with `left`, not by its static position. A button centres its
+        Two things worth stating.
+
+        Anchored with `left`, not by its static position: a button centres its
         content, so an absolutely positioned knob with `left: auto` starts from
         that centre and the travel is added to it — which pushed the knob clean
         outside the track.
+
+        And the knob is never a fixed white. On, the track is the accent, so the
+        knob takes the accent's own contrast colour; off, it takes a token that
+        flips with the theme. A hardcoded white knob vanished against the white
+        accent in dark mode.
       */}
       <span
         className={cn(
-          "absolute left-[2px] top-[2px] h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-          checked ? "translate-x-[16px]" : "translate-x-0",
+          "absolute left-[2px] top-[2px] h-4 w-4 rounded-full shadow-sm transition-transform",
+          checked ? "translate-x-[16px] bg-accent-ink" : "translate-x-0 bg-switch-knob",
         )}
       />
     </button>

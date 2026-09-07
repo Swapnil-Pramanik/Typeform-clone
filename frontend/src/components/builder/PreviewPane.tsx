@@ -16,7 +16,7 @@ import { EditableChoiceList } from "@/components/builder/EditableChoiceList";
 import { EndingScreen } from "@/components/flow/EndingScreen";
 import { WelcomeScreen } from "@/components/flow/WelcomeScreen";
 import { QuestionRenderer } from "@/components/render/QuestionRenderer";
-import { themeStyle } from "@/lib/formTheme";
+import { formSurface } from "@/lib/formTheme";
 import { isChoiceType } from "@/lib/questionTypes";
 import type {
   FormTheme,
@@ -52,7 +52,7 @@ function Canvas({
     <div className="tf-scrollbar flex flex-1 items-center justify-center overflow-y-auto bg-canvas p-8">
       <div
         className="w-full max-w-2xl rounded-xl border border-line bg-bg px-10 py-14 font-[family-name:var(--font-form)] shadow-sm"
-        style={themeStyle(theme)}
+        style={formSurface(theme)}
       >
         {children}
       </div>

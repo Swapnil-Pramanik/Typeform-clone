@@ -661,6 +661,13 @@ Notes worth stating:
 - The app's own base rules live inside `@layer base` / `@layer components`.
   Unlayered CSS beats every layered rule regardless of specificity, which would
   otherwise make `focus:outline-none` unusable on the flow's borderless fields.
+- **A form is not part of the app's theme.** The respondent flow and the
+  builder's preview declare a complete light surface of their own
+  (`formSurface` in `lib/formTheme.ts`) rather than inheriting `data-theme`. A
+  creator's light/dark choice is a preference about *the app*; the person filling
+  the form never made it. Without this, switching to dark painted dark-mode text
+  onto the form's white background and the preview stopped showing what a
+  respondent gets. Measured: the flow is 9.61:1 in both modes, and identical.
 - **Theme without a flash:** an inline script in `layout.tsx` stamps
   `data-theme` before first paint; `lib/theme.ts` exposes it as an external
   store, so `ThemeToggle` needs no effect and no mount-state.
@@ -983,7 +990,13 @@ model is a rule depending on *several* earlier answers, or arithmetic over them.
 Cycles are refused when a rule is written and again at publish, because deleting
 or reordering blocks can break a set that was valid when authored.
 
-**12. A form's theme is three tokens, not a stylesheet.** `forms.theme` holds a
+**12. Nothing in the chrome hardcodes a colour, including a switch knob.** The
+knob takes `--tf-accent-ink` when the track is the accent and `--tf-switch-knob`
+when it is not, so it contrasts in both themes. A hardcoded white knob was
+invisible against the white accent in dark mode — the kind of thing a token layer
+is meant to prevent and a literal colour quietly reintroduces.
+
+**13. A form's theme is three tokens, not a stylesheet.** `forms.theme` holds a
 question colour, a background and a font, and `lib/formTheme.ts` turns them into
 overrides of the same `--tf-*` variables every component already reads — which is
 why a theme repaints the whole respondent flow without a single component knowing

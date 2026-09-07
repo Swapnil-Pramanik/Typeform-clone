@@ -23,7 +23,7 @@ import {
 import { useFormFlow } from "@/components/flow/useFormFlow";
 import { QuestionRenderer } from "@/components/render/QuestionRenderer";
 import { ApiError, API_BASE, api } from "@/lib/api";
-import { themeStyle } from "@/lib/formTheme";
+import { formSurface } from "@/lib/formTheme";
 import { useHotkeys, usePrefersReducedMotion } from "@/lib/hooks";
 import type { EndingPayload, PublicForm } from "@/types";
 
@@ -135,7 +135,7 @@ export function FormFlow({ form }: { form: PublicForm }) {
   return (
     <main
       className="relative min-h-dvh overflow-hidden bg-bg font-[family-name:var(--font-form)]"
-      style={themeStyle(form.theme)}
+      style={formSurface(form.theme)}
     >
       {flow.phase === "question" && <ProgressBar value={flow.progress} />}
 

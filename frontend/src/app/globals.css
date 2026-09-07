@@ -33,6 +33,9 @@
   /* Chrome hover and selection */
   --tf-muted: #f0eff1;
   --tf-muted-strong: #eeedef;
+  /* A switch's knob, for the *off* track. When on, the knob takes
+     --tf-accent-ink, which already contrasts with the accent by definition. */
+  --tf-switch-knob: #ffffff;
 
   /* Accents */
   --tf-accent: #3b333d;          /* the dark button / badge fill */
@@ -90,6 +93,7 @@
 
   --tf-muted: #202026;
   --tf-muted-strong: #2a2a31;
+  --tf-switch-knob: #cfd2d8;
 
   --tf-accent: #ffffff;
   --tf-accent-ink: #17171a;
@@ -129,6 +133,7 @@
   --color-groove: var(--tf-groove);
   --color-muted: var(--tf-muted);
   --color-muted-strong: var(--tf-muted-strong);
+  --color-switch-knob: var(--tf-switch-knob);
   --color-accent: var(--tf-accent);
   --color-accent-ink: var(--tf-accent-ink);
   --color-focus: var(--tf-focus);

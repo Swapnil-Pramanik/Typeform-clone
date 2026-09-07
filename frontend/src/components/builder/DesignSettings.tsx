@@ -9,6 +9,7 @@
  * knowing a theme exists.
  */
 
+import { Divider, Field } from "@/components/builder/PanelRow";
 import {
   ACCENT_COLORS,
   BACKGROUNDS,
@@ -28,25 +29,25 @@ export function DesignSettings({ theme, onPatch }: DesignSettingsProps) {
 
   return (
     <aside className="tf-scrollbar flex w-[300px] shrink-0 flex-col overflow-y-auto border-l-2 border-groove bg-panel">
-      <Section title="Question colour">
+      <Field label="Question colour">
         <Swatches
           values={ACCENT_COLORS}
           selected={current.color}
           onSelect={(color) => onPatch({ color })}
           label="Question colour"
         />
-      </Section>
+      </Field>
 
-      <Section title="Background">
+      <Field label="Background">
         <Swatches
           values={BACKGROUNDS}
           selected={current.background}
           onSelect={(background) => onPatch({ background })}
           label="Background"
         />
-      </Section>
+      </Field>
 
-      <Section title="Font">
+      <Field label="Font">
         <div className="flex rounded-lg bg-muted p-0.5">
           {FONTS.map((font) => (
             <button
@@ -65,27 +66,19 @@ export function DesignSettings({ theme, onPatch }: DesignSettingsProps) {
             </button>
           ))}
         </div>
-      </Section>
+      </Field>
 
-      <Section title="Applies to">
-        <p className="text-[12px] leading-relaxed text-ink-muted">
-          The published form and this preview. A dark background inverts the text
-          and answer cards with it, so the palette stays readable whichever
-          colour you pick.
+      <Divider />
+
+      <div className="px-4 py-3">
+        <p className="text-[13px] leading-relaxed text-ink-muted">
+          Applies to the published form and to this preview — which is why the
+          preview keeps its own colours whether the app is in light or dark mode.
+          A dark form background inverts its text and answer cards with it, so
+          the palette stays readable whichever colour you pick.
         </p>
-      </Section>
+      </div>
     </aside>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="border-b border-line px-4 py-3.5">
-      <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
-        {title}
-      </h3>
-      {children}
-    </section>
   );
 }
 

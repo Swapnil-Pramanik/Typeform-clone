@@ -58,16 +58,49 @@ function luminance(hex: string): number {
 const isDark = (hex: string) => luminance(hex) < 0.45;
 
 /**
- * Token overrides for one form.
+ * The complete light palette a form is drawn on, before its own theme applies.
  *
- * A dark background needs more than `--tf-bg` swapped: the text, hairlines and
- * choice cards all have to invert with it, or the form renders as black on
- * black. Deriving those from the background's luminance keeps the palette
- * coherent whatever colour a creator picks.
+ * A form belongs to the person filling it in, not to the person who built it.
+ * The creator's light/dark preference is a preference about *the app*, so the
+ * respondent flow and the builder's preview declare a full surface of their own
+ * rather than inheriting `data-theme` — otherwise switching the app to dark
+ * would paint the creator's dark text onto the form's white background, and the
+ * preview would stop showing what a respondent gets.
  */
-export function themeStyle(theme: FormTheme | null | undefined): CSSProperties {
-  if (!theme) return {};
-  const style: Record<string, string> = {};
+const FORM_SURFACE: Record<string, string> = {
+  "--tf-bg": "#ffffff",
+  "--tf-panel": "#ffffff",
+  "--tf-ink": "#4b424d",
+  "--tf-ink-strong": "#3b333d",
+  "--tf-ink-muted": "#645d67",
+  "--tf-ink-faint": "#8c868e",
+  "--tf-line": "#e9e8ea",
+  "--tf-line-strong": "#dedcde",
+  "--tf-muted": "#f0eff1",
+  "--tf-muted-strong": "#eeedef",
+  "--tf-accent": "#3b333d",
+  "--tf-accent-ink": "#ffffff",
+  "--tf-danger": "#d92d20",
+  "--tf-focus": "#3d5afe",
+  "--tf-choice-bg": "#f2f2ef",
+  "--tf-choice-bg-hover": "#ebebe7",
+  "--tf-choice-bg-selected": "#e2e2dc",
+  "--tf-choice-key-bg": "#ffffff",
+  "--font-form": FONTS[0].stack,
+};
+
+/**
+ * The surface a form is drawn on: the base palette above, with the form's own
+ * theme applied over it.
+ *
+ * A dark *form* background needs more than `--tf-bg` swapped — the text,
+ * hairlines and answer cards all have to invert with it, or the form renders
+ * black on black. Deriving those from the background's luminance keeps the
+ * palette coherent whatever colour a creator picks.
+ */
+export function formSurface(theme: FormTheme | null | undefined): CSSProperties {
+  const style: Record<string, string> = { ...FORM_SURFACE };
+  if (!theme) return style as CSSProperties;
 
   const background = theme.background || DEFAULT_THEME.background!;
   const accent = theme.color || DEFAULT_THEME.color!;
@@ -79,6 +112,7 @@ export function themeStyle(theme: FormTheme | null | undefined): CSSProperties {
   style["--font-form"] = font.stack;
 
   if (isDark(background)) {
+    style["--tf-panel"] = "#1c212a";
     style["--tf-ink"] = "#eceef2";
     style["--tf-ink-strong"] = "#ffffff";
     style["--tf-ink-muted"] = "#a2a8b4";
@@ -89,7 +123,8 @@ export function themeStyle(theme: FormTheme | null | undefined): CSSProperties {
     style["--tf-choice-bg-hover"] = "#232935";
     style["--tf-choice-bg-selected"] = "#2c3340";
     style["--tf-choice-key-bg"] = "#12161c";
-    style["--tf-panel"] = "#1c212a";
+    style["--tf-muted"] = "#1c212a";
+    style["--tf-muted-strong"] = "#242b35";
   }
 
   return style as CSSProperties;
