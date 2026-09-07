@@ -64,6 +64,29 @@ CHOICE_TYPES: frozenset[QuestionType] = frozenset(
 )
 
 
+class RuleOperator(StrEnum):
+    """How a logic rule compares an answer.
+
+    Deliberately small: these six cover every question type this app has.
+    ``IS``/``IS_NOT`` compare an option ID, a boolean or a string depending on
+    the question; ``GREATER_THAN``/``LESS_THAN`` apply to numbers and ratings;
+    the ``ANSWERED`` pair ignore the value entirely.
+    """
+
+    IS = "is"
+    IS_NOT = "is_not"
+    GREATER_THAN = "greater_than"
+    LESS_THAN = "less_than"
+    ANSWERED = "answered"
+    NOT_ANSWERED = "not_answered"
+
+
+#: Operators that ignore ``value`` altogether.
+VALUELESS_OPERATORS: frozenset[RuleOperator] = frozenset(
+    {RuleOperator.ANSWERED, RuleOperator.NOT_ANSWERED}
+)
+
+
 class FormStatus(StrEnum):
     DRAFT = "draft"
     PUBLISHED = "published"

@@ -12,6 +12,9 @@ from app.schemas.form import (
     QuestionOrderIn,
     QuestionOut,
     QuestionUpdate,
+    RuleIn,
+    RuleOut,
+    RulesIn,
 )
 from app.schemas.response import (
     AnswerIn,
@@ -42,6 +45,9 @@ __all__ = [
     "QuestionOut",
     "QuestionStats",
     "QuestionUpdate",
+    "RuleIn",
+    "RuleOut",
+    "RulesIn",
     "ResponseOut",
     "ResponsePage",
     "SubmissionIn",

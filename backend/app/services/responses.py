@@ -25,6 +25,7 @@ from app.schemas import (
     SubmissionOut,
 )
 from app.services.forms import FormError, load_form_or_raise
+from app.services.logic import next_question_id, path_taken
 from app.services.validation import AnswerValidationError, validate_answer
 
 #: How many verbatims the summary shows for free-text questions.
@@ -89,25 +90,51 @@ def submit_response(db: Session, form: Form, payload: SubmissionIn) -> Submissio
             )
         )
 
-    # A completed submission must satisfy every required question, including the
-    # ones the client never sent at all.
+    # A completed submission must satisfy every required question the respondent
+    # was actually shown. Branching makes that a smaller set than "every required
+    # question": a question on a path not taken was never asked, so demanding it
+    # would make any branched form impossible to submit. The path is recomputed
+    # here from the answers rather than trusted from the client.
     if payload.is_complete:
+        order = [q for q in form.live_questions if not q.is_ending]
+        raw = {item.question_id: item.value for item in payload.answers}
+        asked = set(path_taken(order, raw))
         for question in live.values():
-            if question.required and question.id not in seen:
+            if question.required and question.id in asked and question.id not in seen:
                 raise AnswerValidationError(question.id, "This field is required.")
 
     db.add(response)
     db.commit()
 
-    return SubmissionOut(response_id=response.id, ending=_ending_payload(form))
+    raw = {item.question_id: item.value for item in payload.answers}
+    ending = resolve_ending(form, raw)
+    return SubmissionOut(
+        response_id=response.id,
+        ending=_ending_payload(ending) if ending else None,
+    )
 
 
-def _ending_payload(form: Form) -> dict | None:
-    """The ending block to show, as data rather than a hardcoded screen."""
+def resolve_ending(form: Form, answers: dict[int, object]) -> Question | None:
+    """The ending a respondent lands on, following the same rules the flow does."""
+    order = [q for q in form.live_questions if not q.is_ending]
     endings = [q for q in form.live_questions if q.is_ending]
     if not endings:
         return None
-    ending = endings[0]
+    if not order:
+        return endings[0]
+
+    by_id = {q.id: q for q in form.live_questions}
+    path = path_taken(order, answers)
+    if path:
+        last = by_id[path[-1]]
+        target = next_question_id(last, answers.get(last.id), order + endings)
+        if target is not None and by_id.get(target) in endings:
+            return by_id[target]
+    return endings[0]
+
+
+def _ending_payload(ending: Question) -> dict:
+    """The ending block to show, as data rather than a hardcoded screen."""
     return {
         "id": ending.id,
         "title": ending.title,

@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 
+import { LogicPanel, type DraftRule } from "@/components/builder/LogicPanel";
 import { Toggle } from "@/components/builder/Toggle";
 import { ChevronDown, Lock, Sparkle, Trash } from "@/components/ui/icons";
 import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
@@ -25,6 +26,10 @@ import type {
 
 interface SettingsPanelProps {
   question: Question | null;
+  /** Blocks this question may branch to. Empty disables the Logic section. */
+  logicTargets?: Question[];
+  onRulesChange?: (rules: DraftRule[]) => void;
+  logicError?: string | null;
   /** Set when the welcome screen is selected rather than a question. */
   welcome?: WelcomeScreenData | null;
   onWelcomePatch?: (patch: Partial<WelcomeScreenData>) => void;
@@ -43,6 +48,9 @@ export function SettingsPanel({
   question,
   onPatch,
   onDelete,
+  logicTargets = [],
+  onRulesChange,
+  logicError = null,
   welcome,
   onWelcomePatch,
   onWelcomeRemove,
@@ -166,7 +174,22 @@ export function SettingsPanel({
       </div>
 
       <div className="border-t border-line">
-        <PinnedSection title="Logic" icon={<Sparkle width={14} height={14} />} />
+        {!isEnding && onRulesChange ? (
+          <section className="border-b border-line px-4 py-3.5">
+            <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-ink-faint">
+              <Sparkle width={13} height={13} />
+              Logic
+            </h3>
+            <LogicPanel
+              question={question}
+              targets={logicTargets}
+              onChange={onRulesChange}
+              error={logicError}
+            />
+          </section>
+        ) : (
+          <PinnedSection title="Logic" icon={<Sparkle width={14} height={14} />} />
+        )}
         <PinnedSection title="Comments" icon={<Lock width={14} height={14} />} />
         <div className="p-3">
           <button

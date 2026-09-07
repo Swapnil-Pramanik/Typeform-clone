@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { nextIndex, remainingSteps } from "@/lib/logic";
 import { validateAnswer } from "@/lib/validation";
 import type { AnswerValue, PublicForm, Question } from "@/types";
 
@@ -21,6 +22,14 @@ export interface FlowState {
   direction: number;
   answers: Record<number, AnswerValue>;
   error: string | null;
+  /**
+   * Indexes of the questions actually visited, current one last.
+   *
+   * Branching makes the route personal, so "back" cannot be `index - 1` — that
+   * would walk into a question this respondent was never shown. Retracing the
+   * stack is the only way back that matches the way in.
+   */
+  history: number[];
 }
 
 export interface FormFlow extends FlowState {
@@ -35,6 +44,8 @@ export interface FormFlow extends FlowState {
   /** Validates the current answer; returns true when the flow may move on. */
   advance: () => boolean;
   goBack: () => void;
+  /** True when there is a previous step on the route this respondent took. */
+  canGoBack: boolean;
   jumpTo: (index: number) => void;
   start: () => void;
   finish: () => void;
@@ -56,6 +67,7 @@ export function useFormFlow(form: PublicForm): FormFlow {
     direction: 1,
     answers: {},
     error: null,
+    history: [0],
   });
 
   /**
@@ -69,7 +81,10 @@ export function useFormFlow(form: PublicForm): FormFlow {
   }, [state]);
 
   const current = questions[state.index];
-  const isLast = state.index === questions.length - 1;
+  /** Last means "no question follows on this route", not "last in the list". */
+  const isLast =
+    current !== undefined &&
+    nextIndex(questions, state.index, state.answers[current.id] ?? null) === null;
 
   const setAnswer = useCallback((questionId: number, value: AnswerValue) => {
     setState((previous) => ({
@@ -91,23 +106,31 @@ export function useFormFlow(form: PublicForm): FormFlow {
       return false;
     }
 
-    if (index < questions.length - 1) {
+    const target = nextIndex(questions, index, answers[question.id] ?? null);
+    if (target !== null) {
       setState((previous) => ({
         ...previous,
-        index: previous.index + 1,
+        index: target,
         direction: 1,
         error: null,
+        history: [...previous.history, target],
       }));
     }
     return true;
   }, [questions]);
 
   const goBack = useCallback(() => {
-    setState((previous) =>
-      previous.index === 0
-        ? previous
-        : { ...previous, index: previous.index - 1, direction: -1, error: null },
-    );
+    setState((previous) => {
+      if (previous.history.length < 2) return previous;
+      const history = previous.history.slice(0, -1);
+      return {
+        ...previous,
+        index: history[history.length - 1],
+        direction: -1,
+        error: null,
+        history,
+      };
+    });
   }, []);
 
   const jumpTo = useCallback((index: number) => {
@@ -116,6 +139,11 @@ export function useFormFlow(form: PublicForm): FormFlow {
       direction: index >= previous.index ? 1 : -1,
       index,
       error: null,
+      // Jumping is the server correcting us, so the route rewinds to that point
+      // rather than pretending the questions after it were never seen.
+      history: previous.history.includes(index)
+        ? previous.history.slice(0, previous.history.indexOf(index) + 1)
+        : [...previous.history, index],
     }));
   }, []);
 
@@ -137,6 +165,7 @@ export function useFormFlow(form: PublicForm): FormFlow {
         direction: 1,
         answers: {},
         error: null,
+        history: [0],
       }),
     [hasWelcome],
   );
@@ -156,10 +185,15 @@ export function useFormFlow(form: PublicForm): FormFlow {
     getAnswers: () => stateRef.current.answers,
     current,
     isLast,
+    canGoBack: state.history.length > 1,
+    // Branching means the length of a route is not known in advance, so progress
+    // compares the steps taken against the steps still ahead on the current
+    // route rather than against every question in the form.
     progress: questions.length
       ? state.phase === "ending"
         ? 1
-        : (state.index + 1) / (questions.length + 1)
+        : state.history.length /
+          (state.history.length + remainingSteps(questions, state.index, state.answers) + 1)
       : 0,
     answeredCount,
     setAnswer,

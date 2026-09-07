@@ -15,6 +15,7 @@ import type {
   QuestionSettings,
   QuestionType,
   ResponsePage,
+  RuleOperator,
   SubmissionResult,
   WelcomeScreen,
 } from "@/types";
@@ -138,6 +139,16 @@ export const api = {
     request<Question>(`/api/questions/${questionId}`, {
       method: "PATCH",
       body: body(patch),
+    }),
+
+  /** Replaces a question's branching rules with the complete list sent. */
+  setRules: (
+    questionId: number,
+    rules: { operator: RuleOperator; value?: unknown; target_question_id: number }[],
+  ) =>
+    request<Question>(`/api/questions/${questionId}/rules`, {
+      method: "PUT",
+      body: body({ rules }),
     }),
 
   deleteQuestion: (questionId: number) =>

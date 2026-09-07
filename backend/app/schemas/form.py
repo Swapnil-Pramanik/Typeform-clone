@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.types import FormStatus, QuestionType
+from app.models.types import FormStatus, QuestionType, RuleOperator
 
 
 class ORMModel(BaseModel):
@@ -23,6 +23,26 @@ class OptionOut(ORMModel):
     id: int
     label: str
     position: int
+
+
+# --- logic rules -------------------------------------------------------------
+
+
+class RuleIn(BaseModel):
+    """One branching rule as the builder sends it."""
+
+    operator: RuleOperator
+    #: Compared against the answer. Ignored by `answered` / `not_answered`.
+    value: Any = None
+    target_question_id: int
+
+
+class RuleOut(ORMModel):
+    id: int
+    position: int
+    operator: RuleOperator
+    value: Any = None
+    target_question_id: int
 
 
 # --- questions ---------------------------------------------------------------
@@ -58,6 +78,17 @@ class QuestionOut(ORMModel):
     position: int
     settings: dict[str, Any] | None
     options: list[OptionOut] = []
+    rules: list[RuleOut] = []
+
+
+class RulesIn(BaseModel):
+    """The complete ordered rule list for one question — replaced wholesale.
+
+    Same shape as reordering questions: sending the whole list means the server
+    never has to reconcile a partial update against what it already had.
+    """
+
+    rules: list[RuleIn] = Field(default_factory=list, max_length=20)
 
 
 class QuestionOrderIn(BaseModel):

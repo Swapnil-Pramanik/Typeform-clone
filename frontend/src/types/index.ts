@@ -38,6 +38,23 @@ export interface QuestionOption {
   position: number;
 }
 
+export type RuleOperator =
+  | "is"
+  | "is_not"
+  | "greater_than"
+  | "less_than"
+  | "answered"
+  | "not_answered";
+
+/** One branching rule: if this answer matches, go to `target_question_id`. */
+export interface QuestionRule {
+  id: number;
+  position: number;
+  operator: RuleOperator;
+  value: unknown;
+  target_question_id: number;
+}
+
 export interface Question {
   id: number;
   type: QuestionType;
@@ -47,6 +64,8 @@ export interface Question {
   position: number;
   settings: QuestionSettings | null;
   options: QuestionOption[];
+  /** Evaluated in order; the first match wins. Empty means "go to the next". */
+  rules: QuestionRule[];
 }
 
 export interface WelcomeScreen {

@@ -5,9 +5,16 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import CHOICE_TYPES, Question, QuestionOption, QuestionType
-from app.schemas import FormOut, QuestionCreate, QuestionUpdate
+from app.models import (
+    CHOICE_TYPES,
+    Question,
+    QuestionOption,
+    QuestionRule,
+    QuestionType,
+)
+from app.schemas import FormOut, QuestionCreate, QuestionUpdate, RuleIn
 from app.services.forms import FormError, get_form, load_form_or_raise
+from app.services.logic import LogicError, assert_no_cycles
 
 #: Sensible starting options so a fresh choice block is immediately editable.
 DEFAULT_CHOICE_LABELS = ["Option 1", "Option 2", "Option 3"]
@@ -21,7 +28,7 @@ def _load_question(db: Session, question_id: int) -> Question:
     question = db.scalar(
         select(Question)
         .where(Question.id == question_id)
-        .options(selectinload(Question.options))
+        .options(selectinload(Question.options), selectinload(Question.rules))
         .execution_options(populate_existing=True)
     )
     if question is None or question.deleted_at is not None:
@@ -129,3 +136,42 @@ def reorder_questions(db: Session, form_id: int, question_ids: list[int]) -> For
 
     db.commit()
     return get_form(db, form_id)
+
+
+def set_rules(db: Session, question_id: int, rules: list[RuleIn]) -> Question:
+    """Replace a question's branching rules, refusing any set that loops.
+
+    Rejecting a cycle at write time rather than at publish is deliberate: the
+    author finds out while looking at the rule they just wrote, not minutes
+    later on a different screen.
+    """
+    question = _load_question(db, question_id)
+    form = load_form_or_raise(db, question.form_id)
+    live = {q.id for q in form.live_questions}
+
+    for rule in rules:
+        if rule.target_question_id not in live:
+            raise QuestionError("That rule points at a block which is not in this form.")
+        if rule.target_question_id == question_id:
+            raise QuestionError("A rule cannot jump to the question it belongs to.")
+
+    question.rules.clear()
+    question.rules.extend(
+        QuestionRule(
+            position=index,
+            operator=rule.operator,
+            value=rule.value,
+            target_question_id=rule.target_question_id,
+        )
+        for index, rule in enumerate(rules)
+    )
+    db.flush()
+
+    try:
+        assert_no_cycles(load_form_or_raise(db, question.form_id).live_questions)
+    except LogicError as error:
+        db.rollback()
+        raise QuestionError(str(error)) from error
+
+    db.commit()
+    return _load_question(db, question_id)

@@ -13,6 +13,7 @@ import { AddElementModal } from "@/components/builder/AddElementModal";
 import { FormShell } from "@/components/builder/FormShell";
 import { PreviewPane } from "@/components/builder/PreviewPane";
 import { DesignSettings } from "@/components/builder/DesignSettings";
+import type { DraftRule } from "@/components/builder/LogicPanel";
 import { QuestionList } from "@/components/builder/QuestionList";
 import { SaveIndicator } from "@/components/builder/SaveIndicator";
 import { SettingsPanel } from "@/components/builder/SettingsPanel";
@@ -42,6 +43,7 @@ export default function BuilderPage({
 
   const [chosen, setChosen] = useState<Selection | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [logicError, setLogicError] = useState<string | null>(null);
 
   const questions = useMemo(
     () => builder.form?.questions ?? [],
@@ -99,6 +101,34 @@ export default function BuilderPage({
     });
 
   const reorder = (ids: number[]) => run(() => builder.reorder(ids));
+
+  /**
+   * A rule may jump to any block after this one, plus any ending. Offering an
+   * earlier question would let an author build a loop the server would then
+   * refuse, so the choice is narrowed to targets that cannot close one.
+   */
+  const logicTargets = useMemo(() => {
+    if (!selected || selected.type === "ending") return [];
+    const position = questions.findIndex((q) => q.id === selected.id);
+    return questions.filter(
+      (q, index) => q.id !== selected.id && (index > position || q.type === "ending"),
+    );
+  }, [questions, selected]);
+
+  const saveRules = (rules: DraftRule[]) => {
+    if (!selected) return;
+    setLogicError(null);
+    void builder
+      .setRules(
+        selected.id,
+        rules.map((rule) => ({
+          operator: rule.operator,
+          value: rule.value,
+          target_question_id: rule.target_question_id,
+        })),
+      )
+      .catch((failure) => setLogicError(errorMessage(failure)));
+  };
 
   /** Adding a welcome screen is a form patch, not a new question row. */
   const addWelcome = () => {
@@ -172,6 +202,9 @@ export default function BuilderPage({
                 selected && builder.patchQuestion(selected.id, patch)
               }
               onDelete={() => void removeSelected()}
+            logicTargets={logicTargets}
+            onRulesChange={saveRules}
+            logicError={logicError}
               welcome={selection.kind === "welcome" ? welcome : null}
               onWelcomePatch={(patch) =>
                 builder.patchForm({ welcome_screen: { ...welcome, ...patch } })

@@ -22,11 +22,14 @@ from app.models import (
     FormStatus,
     Question,
     QuestionOption,
+    QuestionRule,
     QuestionType,
     Response,
+    RuleOperator,
 )
 
 FEEDBACK_SLUG = "customer-feedback-2f8a1c"
+SUPPORT_SLUG = "support-triage-5c9d20"
 EVENT_SLUG = "devcon-registration-7b41e9"
 DRAFT_TITLE = "Employee onboarding survey"
 
@@ -195,6 +198,102 @@ def _event_form() -> Form:
     )
 
 
+def _support_form() -> Form:
+    """A branching form, so logic jumps are visible without authoring one.
+
+    The shape is the classic triage fork: happy customers are thanked and let
+    go, unhappy ones are asked what went wrong and how to reach them. Answering
+    "yes" never shows the complaint question at all — which is also why that
+    question can be required without making the happy path impossible to submit.
+    """
+    return Form(
+        title="Support triage (branching demo)",
+        slug=SUPPORT_SLUG,
+        status=FormStatus.PUBLISHED,
+        published_at=datetime.now(timezone.utc) - timedelta(days=3),
+        welcome_screen={
+            "title": "Did we sort it out?",
+            "description": "Two questions, and they change depending on your answer.",
+            "button_text": "Start",
+            "estimated_minutes": 1,
+        },
+        theme={"color": "#1d4ed8", "background": "#ffffff", "font": "inter"},
+        questions=[
+            _question(
+                QuestionType.YES_NO,
+                "Was your issue resolved?",
+                0,
+                description="Answer yes and you will skip the next question entirely.",
+                required=True,
+            ),
+            _question(
+                QuestionType.LONG_TEXT,
+                "What went wrong?",
+                1,
+                description="Only asked when the issue was not resolved.",
+                required=True,
+            ),
+            _question(
+                QuestionType.EMAIL,
+                "Where can we reach you?",
+                2,
+            ),
+            _question(
+                QuestionType.ENDING,
+                "Thanks — that is logged.",
+                3,
+                description="A support lead reads these every morning.",
+                settings={"button_text": "Done"},
+            ),
+        ],
+    )
+
+
+def _add_branching(db: Session, form: Form) -> None:
+    """Wire the fork: *resolved = yes* jumps past the complaint question."""
+    resolved, _complaint, email, *_ = form.questions
+    resolved.rules.append(
+        QuestionRule(
+            position=0,
+            operator=RuleOperator.IS,
+            value=True,
+            target_question_id=email.id,
+        )
+    )
+
+
+def _seed_support_responses(db: Session, form: Form) -> None:
+    """Two responses, one down each branch, so the results show both paths."""
+    resolved, complaint, email, *_ = form.questions
+    now = datetime.now(timezone.utc)
+
+    happy = Response(
+        form_id=form.id,
+        started_at=now - timedelta(days=2),
+        submitted_at=now - timedelta(days=2) + timedelta(minutes=1),
+        is_complete=True,
+        meta={"user_agent": "seed", "referrer": ""},
+        answers=[
+            _answer(resolved, True, "Yes"),
+            _answer(email, "happy@example.com", "happy@example.com"),
+        ],
+    )
+    unhappy_text = "Took four days and three follow-ups to get a reply."
+    unhappy = Response(
+        form_id=form.id,
+        started_at=now - timedelta(days=1),
+        submitted_at=now - timedelta(days=1) + timedelta(minutes=3),
+        is_complete=True,
+        meta={"user_agent": "seed", "referrer": ""},
+        answers=[
+            _answer(resolved, False, "No"),
+            _answer(complaint, unhappy_text, unhappy_text),
+            _answer(email, "waiting@example.com", "waiting@example.com"),
+        ],
+    )
+    db.add_all([happy, unhappy])
+
+
 def _draft_form() -> Form:
     """A draft, so the dashboard shows both statuses on first load."""
     return Form(
@@ -356,7 +455,8 @@ def _clear_seeded(db: Session) -> None:
     """Remove any previous run of this script. Nothing else is touched."""
     existing = db.scalars(
         select(Form).where(
-            Form.slug.in_([FEEDBACK_SLUG, EVENT_SLUG]) | (Form.title == DRAFT_TITLE)
+            Form.slug.in_([FEEDBACK_SLUG, EVENT_SLUG, SUPPORT_SLUG])
+            | (Form.title == DRAFT_TITLE)
         )
     ).all()
     for form in existing:
@@ -369,17 +469,25 @@ def seed() -> None:
     with SessionLocal() as db:
         _clear_seeded(db)
 
-        feedback, event, draft = _feedback_form(), _event_form(), _draft_form()
-        db.add_all([feedback, event, draft])
+        feedback, event, support, draft = (
+            _feedback_form(),
+            _event_form(),
+            _support_form(),
+            _draft_form(),
+        )
+        db.add_all([feedback, event, support, draft])
         db.commit()
 
+        _add_branching(db, support)
         _seed_feedback_responses(db, feedback, rng)
         _seed_event_responses(db, event, rng)
+        _seed_support_responses(db, support)
         db.commit()
 
-        print("Seeded 3 forms and 17 responses.")
+        print("Seeded 4 forms and 19 responses.")
         print(f"  published  /f/{FEEDBACK_SLUG}")
         print(f"  published  /f/{EVENT_SLUG}")
+        print(f"  published  /f/{SUPPORT_SLUG}   (branching demo)")
         print(f"  draft      {DRAFT_TITLE}")
 
 

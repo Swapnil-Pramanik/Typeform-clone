@@ -84,6 +84,13 @@ class Question(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     form: Mapped[Form] = relationship(back_populates="questions")
+    #: Branching rules owned by this question, in evaluation order.
+    rules: Mapped[list["QuestionRule"]] = relationship(
+        back_populates="question",
+        cascade="all, delete-orphan",
+        order_by="QuestionRule.position",
+        foreign_keys="QuestionRule.question_id",
+    )
     #: Declared so the unit of work knows answers depend on questions and emits
     #: their DELETE first. ``passive_deletes`` then hands the actual removal to
     #: the ``ON DELETE CASCADE`` on ``answers.question_id``, which is the real
@@ -102,6 +109,38 @@ class Question(Base):
     @property
     def is_ending(self) -> bool:
         return self.type == QuestionType.ENDING
+
+
+class QuestionRule(Base):
+    """One branching rule: *if this answer matches, go there instead of onward.*
+
+    Rules belong to the question being answered and are evaluated in ``position``
+    order, first match winning — the same "first rule that fires" model the real
+    product uses, which keeps authoring predictable without needing precedence
+    syntax.
+    """
+
+    __tablename__ = "question_rules"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    question_id: Mapped[int] = mapped_column(
+        ForeignKey("questions.id", ondelete="CASCADE"), nullable=False
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    operator: Mapped[str] = mapped_column(String(16), nullable=False)
+    #: JSON, so one column can hold an option ID, a boolean, a number or a
+    #: string — whichever the question being compared produces.
+    value: Mapped[object | None] = mapped_column(JSONText)
+    target_question_id: Mapped[int] = mapped_column(
+        ForeignKey("questions.id", ondelete="CASCADE"), nullable=False
+    )
+
+    question: Mapped[Question] = relationship(
+        back_populates="rules", foreign_keys=[question_id]
+    )
+    target: Mapped[Question] = relationship(foreign_keys=[target_question_id])
+
+    __table_args__ = (Index("ix_question_rules_question", "question_id", "position"),)
 
 
 class QuestionOption(Base):

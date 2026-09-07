@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models import Form, FormStatus, Question, QuestionOption, Response
 from app.schemas import FormCreate, FormOut, FormSummaryOut, FormUpdate
+from app.services.logic import LogicError, assert_no_cycles
 
 SLUG_SUFFIX_LENGTH = 6
 _SLUG_CLEAN_RE = re.compile(r"[^a-z0-9]+")
@@ -47,7 +48,8 @@ def load_form_or_raise(db: Session, form_id: int) -> Form:
     form = db.scalar(
         select(Form)
         .where(Form.id == form_id)
-        .options(selectinload(Form.questions).selectinload(Question.options))
+        .options(selectinload(Form.questions).selectinload(Question.options),
+            selectinload(Form.questions).selectinload(Question.rules))
         .execution_options(populate_existing=True)
     )
     if form is None:
@@ -158,6 +160,13 @@ def publish_form(db: Session, form_id: int) -> FormOut:
     if not answerable:
         raise FormError("Add at least one question before publishing.")
 
+    # Rules can also break by deletion or reordering, not only by editing, so
+    # publishing re-checks rather than trusting the write-time check alone.
+    try:
+        assert_no_cycles(form.live_questions)
+    except LogicError as error:
+        raise FormError(str(error)) from error
+
     if not form.slug:
         form.slug = _unique_slug(db, form.title)
     form.status = FormStatus.PUBLISHED
@@ -215,7 +224,8 @@ def get_published_form(db: Session, slug: str) -> Form:
     form = db.scalar(
         select(Form)
         .where(Form.slug == slug, Form.status == FormStatus.PUBLISHED)
-        .options(selectinload(Form.questions).selectinload(Question.options))
+        .options(selectinload(Form.questions).selectinload(Question.options),
+            selectinload(Form.questions).selectinload(Question.rules))
         .execution_options(populate_existing=True)
     )
     if form is None:

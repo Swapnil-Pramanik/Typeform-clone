@@ -21,10 +21,18 @@ import type {
   FormTheme,
   Question,
   QuestionType,
+  RuleOperator,
   WelcomeScreen,
 } from "@/types";
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
+
+/** One branching rule as the builder sends it. */
+export interface RulePayload {
+  operator: RuleOperator;
+  value?: unknown;
+  target_question_id: number;
+}
 
 const AUTOSAVE_MS = 600;
 
@@ -163,6 +171,31 @@ export function useBuilder(formId: number) {
   );
 
   /**
+   * Rules go straight to the server rather than through the autosave queue: the
+   * server can refuse a set that loops, and that refusal has to reach the author
+   * attached to the rule they just wrote.
+   */
+  const setRules = useCallback(
+    async (questionId: number, rules: RulePayload[]) => {
+      setSaveState("saving");
+      try {
+        const updated = await api.setRules(questionId, rules);
+        writeCache((form) => ({
+          ...form,
+          questions: form.questions.map((question) =>
+            question.id === questionId ? updated : question,
+          ),
+        }));
+        setSaveState("saved");
+      } catch (error) {
+        setSaveState("error");
+        throw error;
+      }
+    },
+    [writeCache],
+  );
+
+  /**
    * Reordering sends the complete ordered ID array; the server rewrites every
    * position in one transaction, so the client never computes a position itself.
    */
@@ -200,6 +233,7 @@ export function useBuilder(formId: number) {
     addQuestion,
     deleteQuestion,
     reorder,
+    setRules,
   };
 }
 

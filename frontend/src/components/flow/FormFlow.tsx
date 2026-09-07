@@ -216,7 +216,7 @@ export function FormFlow({ form }: { form: PublicForm }) {
         <NavChevrons
           onUp={flow.goBack}
           onDown={onAdvance}
-          canGoUp={flow.index > 0}
+          canGoUp={flow.canGoBack}
           canGoDown={!pending}
         />
       )}
