@@ -693,7 +693,15 @@ key surface is exactly zero.
 |---|---|---|
 | Next.js frontend | Vercel | Set `NEXT_PUBLIC_API_URL` to the deployed API origin. |
 | FastAPI backend | Vercel, second project, root `backend/` | `vercel.json` routes everything to `app/main.py`, where the `FastAPI` instance is named `app`. |
-| Database | Turso (hosted libSQL) | SQLite over the wire. Data survives redeploys. |
+| Database | Turso (hosted libSQL), AWS AP South (Mumbai) | SQLite over the wire. Data survives redeploys. |
+
+**Both Vercel projects are pinned to `bom1` (Mumbai)** in their `vercel.json`,
+matching the database's region. This is not cosmetic: Turso is SQLite *over
+HTTP*, so every query is a network round trip, and the summary endpoint makes
+19 of them. Same-region that is ~80ms; with the function in Vercel's default
+`iad1` and the database in Mumbai it would be roughly four seconds. The rule
+is that the database region follows the function, not the user — the browser
+never talks to the database.
 
 **Why not a file on disk.** Serverless functions have an ephemeral filesystem, so
 a local `.db` file cannot persist in production on any serverless host. Turso
