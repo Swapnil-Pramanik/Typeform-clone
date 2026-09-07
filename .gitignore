@@ -11,3 +11,6 @@ __pycache__/
 .DS_Store
 .vercel
 CLAUDE.md
+
+# local visual-check scripts, not part of the deliverable
+frontend/*.mjs

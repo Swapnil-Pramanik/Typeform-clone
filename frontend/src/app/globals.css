@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens.
+
+   One CSS-variable layer, surfaced to Tailwind through @theme inline, so every
+   colour in the app is named once. Dark mode is the same token names redefined
+   under [data-theme="dark"] — no component knows which theme is active.
+--------------------------------------------------------------------------- */
+
+:root {
+  /* Surfaces */
+  --tf-bg: #ffffff;
+  --tf-canvas: #f7f7f6;          /* the builder's preview canvas */
+  --tf-panel: #ffffff;
+  --tf-rail: #fbfbfa;
+  --tf-overlay: rgba(15, 15, 16, 0.45);
+
+  /* Text */
+  --tf-ink: #26262b;             /* question text — dark grey, not pure black */
+  --tf-ink-strong: #0b0b0c;
+  --tf-ink-muted: #6b6b73;
+  --tf-ink-faint: #9a9aa2;
+
+  /* Lines */
+  --tf-line: #e6e6e3;
+  --tf-line-strong: #d6d6d1;
+
+  /* Accents */
+  --tf-accent: #26262b;          /* the dark button / badge fill */
+  --tf-accent-ink: #ffffff;
+  --tf-focus: #3d5afe;
+  --tf-danger: #d92d20;
+  --tf-success: #067647;
+
+  /* Choice cards */
+  --tf-choice-bg: #f2f2ef;
+  --tf-choice-bg-hover: #ebebe7;
+  --tf-choice-bg-selected: #e2e2dc;
+  --tf-choice-key-bg: #ffffff;
+
+  /* Motion — one place, so reduced-motion can flatten all of it */
+  --tf-step-duration: 450ms;
+  --tf-step-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --tf-radius: 8px;
+  --tf-radius-lg: 12px;
+}
+
+[data-theme="dark"] {
+  --tf-bg: #0f0f11;
+  --tf-canvas: #131316;
+  --tf-panel: #17171a;
+  --tf-rail: #121214;
+  --tf-overlay: rgba(0, 0, 0, 0.6);
+
+  --tf-ink: #ececee;
+  --tf-ink-strong: #ffffff;
+  --tf-ink-muted: #9e9ea6;
+  --tf-ink-faint: #6d6d75;
+
+  --tf-line: #2a2a30;
+  --tf-line-strong: #3a3a42;
+
+  --tf-accent: #ffffff;
+  --tf-accent-ink: #0f0f11;
+  --tf-focus: #7c92ff;
+
+  --tf-choice-bg: #1e1e23;
+  --tf-choice-bg-hover: #26262c;
+  --tf-choice-bg-selected: #303038;
+  --tf-choice-key-bg: #0f0f11;
+}
+
+@theme inline {
+  --color-bg: var(--tf-bg);
+  --color-canvas: var(--tf-canvas);
+  --color-panel: var(--tf-panel);
+  --color-rail: var(--tf-rail);
+  --color-ink: var(--tf-ink);
+  --color-ink-strong: var(--tf-ink-strong);
+  --color-ink-muted: var(--tf-ink-muted);
+  --color-ink-faint: var(--tf-ink-faint);
+  --color-line: var(--tf-line);
+  --color-line-strong: var(--tf-line-strong);
+  --color-accent: var(--tf-accent);
+  --color-accent-ink: var(--tf-accent-ink);
+  --color-focus: var(--tf-focus);
+  --color-danger: var(--tf-danger);
+  --color-success: var(--tf-success);
+  --color-choice: var(--tf-choice-bg);
+  --color-choice-hover: var(--tf-choice-bg-hover);
+  --color-choice-selected: var(--tf-choice-bg-selected);
+  --color-choice-key: var(--tf-choice-key-bg);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* These live in @layer base so a Tailwind utility can still override them.
+   Unlayered rules beat every layered one regardless of specificity, which would
+   otherwise make `focus:outline-none` unusable on the flow's borderless fields. */
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background: var(--tf-bg);
+    color: var(--tf-ink);
+    font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A single visible focus treatment, used by keyboard navigation everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--tf-focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* The respondent flow is keyboard-first; the caret in a borderless field is
+     the main affordance telling you where you are, so it is tinted. */
+  .tf-caret {
+    caret-color: var(--tf-focus);
+  }
+
+  .tf-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .tf-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--tf-line-strong);
+    border-radius: 999px;
+  }
+  .tf-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tf-step-duration: 1ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
