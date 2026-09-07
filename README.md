@@ -696,7 +696,7 @@ Insights, then a rule and the Research Flow demo entry — with the sidebar and
 workspace pane sitting *below both*, not beside the nav. The sidebar carries the
 Create form button, a borderless search row, a Workspaces tree under a
 collapsible **Private** group, and, pinned to the bottom, the response meter with
-its "Increase response limit" button and the Ask Typeform AI composer. The
+the response count and the Ask Typeform AI composer. The
 workspace header is the title plus `⋯`, Invite and the plan gem, with the sort
 control and a labelled List/Grid segmented toggle pushed right.
 
@@ -707,9 +707,14 @@ absolute date, and a form with no responses shows `–` in both columns rather
 than a zero.
 
 Chrome that the real product has and this build does not implement — Integrations,
-Brand kit, View plans, Research Flow, Invite, the AI composer, Increase response
-limit — is rendered in place and marked Coming Soon rather than omitted, so the
-layout reads as the real thing.
+Brand kit, View plans, Research Flow, Invite, the AI composer — is rendered in
+place and marked Coming Soon rather than omitted, so the layout reads as the
+real thing.
+
+The one thing deliberately *not* reproduced is the plan meter. The real sidebar
+shows responses against a plan allowance; there is no plan and no allowance
+here, so a bar filling towards an invented ceiling would be fiction. The count
+alone is the true statement.
 
 ### Fidelity notes for the respondent flow
 
@@ -925,7 +930,7 @@ product puts the feature:
 | Share → *Embed & distribute* | Standard/popup/slider/side-tab embeds, email, QR |
 | Dashboard nav | *Contacts*, *Automations*, *Insights*, *Research Flow* |
 | Dashboard account bar | *Integrations*, *Brand kit*, *View plans*, help, the account switcher |
-| Dashboard sidebar | *Ask Typeform AI*, *Increase response limit* |
+| Dashboard sidebar | *Ask Typeform AI* |
 | Workspace header | *Invite*, the workspace `⋯` menu |
 | Row menu | *Workflow*, *Copy to*, *Move to* |
 | Sidebar | *New workspace* |
@@ -939,8 +944,7 @@ reads as a bug, while one that says why reads as a decision. Both come from
 
 The controls wired this way: the account switcher, Integrations, Brand kit, View
 plans, Help and the avatar in the top bar; Research Flow and the plan gems; the
-workspace `⋯`, Invite, New workspace, Increase response limit and the AI
-composer; the per-row Integrations button; Workflow, Copy to and Move to in the
+workspace `⋯`, Invite, New workspace and the AI composer; the per-row Integrations button; Workflow, Copy to and Move to in the
 row menu; the Video segment, Randomize, "Other", "None", Vertical alignment, the
 image slot, Logic and Comments in the settings panel; and every greyed-out block
 type plus the Import questions and Create with AI tabs in the add-element modal.

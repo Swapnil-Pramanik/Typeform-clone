@@ -13,7 +13,6 @@ import { useState } from "react";
 import { CaretUp, Mic, Plus, Search, Send, Workspaces } from "@/components/ui/icons";
 import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
-import { RESPONSE_LIMIT } from "@/lib/creator";
 
 interface SidebarProps {
   search: string;
@@ -34,7 +33,6 @@ export function Sidebar({
 }: SidebarProps) {
   const comingSoon = useComingSoon();
   const [privateOpen, setPrivateOpen] = useState(true);
-  const used = Math.min(responsesCollected / RESPONSE_LIMIT, 1);
 
   return (
     <aside className="tf-scrollbar flex w-[256px] shrink-0 flex-col overflow-y-auto border-r-2 border-groove bg-rail">
@@ -105,27 +103,19 @@ export function Sidebar({
       </div>
 
       <div className="mt-auto">
+        {/*
+          The real product meters this against a plan allowance. There is no
+          plan and no allowance here, so a bar filling towards an invented
+          ceiling would be fiction — the count alone is the true statement.
+        */}
         <div className="border-t-2 border-groove px-4 py-4">
           <p className="text-[15px] text-ink">Responses collected</p>
-          <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-line-strong">
-            <div
-              className="h-full rounded-full bg-ink-strong"
-              style={{ width: `${used * 100}%` }}
-            />
-          </div>
-          <p className="mt-2 text-[13px] text-ink-muted">
-            <span className="text-[17px] font-medium text-ink-strong">
-              {responsesCollected}
-            </span>{" "}
-            / {RESPONSE_LIMIT}
+          <p className="mt-1 text-[24px] font-medium leading-tight text-ink-strong tabular-nums">
+            {responsesCollected.toLocaleString()}
           </p>
-          <button
-            type="button"
-            {...comingSoonProps(comingSoon, "Raising the response limit")}
-            className="mt-3 rounded-lg border border-line bg-panel px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
-          >
-            Increase response limit
-          </button>
+          <p className="mt-0.5 text-[13px] text-ink-muted">
+            across {formCount} form{formCount === 1 ? "" : "s"}
+          </p>
         </div>
 
         <div className="border-t-2 border-groove p-3">

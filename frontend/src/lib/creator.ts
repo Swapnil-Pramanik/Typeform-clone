@@ -13,6 +13,3 @@ export const CREATOR = {
   /** The letter shown in the workspace chip beside the handle. */
   workspaceInitial: "P",
 } as const;
-
-/** Free-plan response allowance, mirrored by the sidebar meter. */
-export const RESPONSE_LIMIT = 100;
