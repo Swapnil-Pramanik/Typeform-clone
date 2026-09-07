@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str = "sqlite:///./typeform.db"
+    #: Hosted libSQL (Turso) credential, kept out of the URL. Turso issues the
+    #: host and the token as two separate values, so they stay two settings —
+    #: a secret embedded in a connection string is easy to leak and easy to
+    #: mangle. Ignored for local SQLite.
+    database_auth_token: str | None = None
     cors_origins: str = "http://localhost:3000"
     creator_name: str = "Swapnil"
 

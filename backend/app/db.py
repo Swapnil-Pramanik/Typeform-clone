@@ -22,18 +22,21 @@ def _engine_options(url: str) -> tuple[str, dict]:
 
     * **Local SQLite** is used from FastAPI's threadpool, so the driver's
       same-thread check has to be switched off.
-    * **Hosted libSQL** carries its credential as an ``authToken`` query
-      parameter, but ``sqlalchemy-libsql`` folds the query string into the URI it
-      hands the driver, and the driver only reads the token from an ``auth_token``
-      keyword argument — so the connection is rejected as an "empty JWT token".
-      Lifting the token out of the URL and passing it explicitly is the fix.
+    * **Hosted libSQL** takes its credential as an ``auth_token`` keyword
+      argument, not as part of the URL. ``sqlalchemy-libsql`` folds any query
+      string into the URI it hands the driver, and the driver ignores it there —
+      a token left in the URL comes back as an "empty JWT token". The token is
+      therefore its own setting, and is passed through ``connect_args``.
+
+      A token embedded in the URL as ``?authToken=`` is still honoured, so a
+      connection string copied from Turso's docs keeps working.
     """
     if url.startswith("sqlite:///"):
         return url, {"connect_args": {"check_same_thread": False}}
 
     if "+libsql" in url:
         parsed = make_url(url)
-        token = dict(parsed.query).get("authToken")
+        token = settings.database_auth_token or dict(parsed.query).get("authToken")
         if token:
             return str(parsed.difference_update_query(["authToken"])), {
                 "connect_args": {"auth_token": token}

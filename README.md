@@ -674,8 +674,15 @@ badge; the final question's button reads **Submit**, not OK.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `DATABASE_URL` | `sqlite:///./typeform.db` | Production: `sqlite+libsql://<db>.turso.io?authToken=<token>&secure=true` |
+| `DATABASE_URL` | `sqlite:///./typeform.db` | Production: `sqlite+libsql://<db>.turso.io?secure=true` |
+| `DATABASE_AUTH_TOKEN` | unset | Turso token. Kept out of the URL — see below. |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated. Add the deployed frontend origin. |
+
+Turso issues the host and the token as two separate values, and they stay two
+settings. A credential embedded in a connection string is easy to leak in a log
+line and easy to mangle by hand. A token supplied the other way, as
+`?authToken=` in the URL, is still honoured so that a string copied from Turso's
+own docs keeps working.
 
 ### `frontend/.env.local`
 
@@ -733,8 +740,8 @@ set -a && . ./.env.production && set +a
 * `sqlalchemy-libsql` folds the URL's query string into the URI it passes the
   driver, but the driver only reads the credential from an `auth_token` keyword
   argument — so a token left in the URL is rejected as an *"empty JWT token"*.
-  `db.py` lifts it out of the URL and passes it explicitly; nothing else in the
-  app has to know.
+  `DATABASE_AUTH_TOKEN` is passed through `connect_args` instead; nothing else in
+  the app has to know.
 
 Set `CORS_ORIGINS` on the backend project to the deployed frontend origin plus
 `http://localhost:3000`.
