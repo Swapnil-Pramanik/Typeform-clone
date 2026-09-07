@@ -8,9 +8,10 @@ conversational flow.
 - **Backend** — FastAPI, SQLAlchemy 2, Alembic, Pydantic v2
 - **Database** — SQLite locally, hosted libSQL (Turso) in production — one `DATABASE_URL` switches between them
 
-> **Live demo:** _<add the deployed URL here>_ — deployment is configured (§12) but
-> not yet run; it needs a Vercel and a Turso account. Run locally with §2 in the
-> meantime.
+> **Live demo:** <https://typeform-clone-frontend-pramanikswapnil9-1372s-projects.vercel.app>
+> — API at <https://typeform-clone-pramanikswapnil9-1372s-projects.vercel.app>
+> (`/docs` for the OpenAPI browser). Frontend and API both run in Vercel's `bom1`
+> region alongside the Turso database in Mumbai.
 
 ---
 
@@ -769,9 +770,15 @@ deployment, an explicit list goes stale as soon as you push again — set
 `CORS_ORIGIN_REGEX` as well so preview builds keep working:
 
 ```
-CORS_ORIGINS       https://typeform-clone-frontend.vercel.app,http://localhost:3000
-CORS_ORIGIN_REGEX  https://typeform-clone-frontend.*\.vercel\.app
+CORS_ORIGINS       https://<frontend>.vercel.app,http://localhost:3000
+CORS_ORIGIN_REGEX  https://typeform-clone-frontend-.*-<your-scope>\.vercel\.app
 ```
+
+Anchor the regex on the **account-scoped** suffix, not just the project name.
+`*.vercel.app` hostnames are global, so a pattern like
+`https://typeform-clone-frontend.*\.vercel\.app` also matches
+`typeform-clone-frontend.vercel.app`, which belongs to a different Vercel user
+entirely — that origin would then be allowed to call this API from a browser.
 
 ---
 
