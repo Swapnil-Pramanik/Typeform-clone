@@ -16,8 +16,10 @@ import { QuestionList } from "@/components/builder/QuestionList";
 import { SaveIndicator } from "@/components/builder/SaveIndicator";
 import { SettingsPanel } from "@/components/builder/SettingsPanel";
 import { useBuilder } from "@/components/builder/useBuilder";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingPane } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import { errorMessage } from "@/lib/errors";
 import { BLOCKS } from "@/lib/questionTypes";
 import type { QuestionType } from "@/types";
 
@@ -49,21 +51,34 @@ export default function BuilderPage({
       ? pages.findIndex((question) => question.id === selected.id) + 1
       : null;
 
-  const addBlock = async (type: QuestionType) => {
-    const meta = BLOCKS[type];
-    const created = await builder.addQuestion(
-      type,
-      meta.defaultTitle ?? "Your question here",
-      meta.defaultSettings,
-    );
-    setChosenId(created.id);
+  /** Structural edits go straight to the server, so each one can fail visibly. */
+  const run = async (action: () => Promise<void>) => {
+    try {
+      await action();
+    } catch (failure) {
+      toast.show(errorMessage(failure), "error");
+    }
   };
 
-  const removeSelected = async () => {
-    if (!selected) return;
-    await builder.deleteQuestion(selected.id);
-    toast.show("Block deleted. Existing answers to it are kept.");
-  };
+  const addBlock = (type: QuestionType) =>
+    run(async () => {
+      const meta = BLOCKS[type];
+      const created = await builder.addQuestion(
+        type,
+        meta.defaultTitle ?? "Your question here",
+        meta.defaultSettings,
+      );
+      setChosenId(created.id);
+    });
+
+  const removeSelected = () =>
+    run(async () => {
+      if (!selected) return;
+      await builder.deleteQuestion(selected.id);
+      toast.show("Block deleted. Existing answers to it are kept.");
+    });
+
+  const reorder = (ids: number[]) => run(() => builder.reorder(ids));
 
   return (
     <FormShell formId={formId} headerSlot={<SaveIndicator state={builder.saveState} />}>
@@ -71,13 +86,20 @@ export default function BuilderPage({
         <div className="flex-1">
           <LoadingPane label="Loading your form" />
         </div>
+      ) : builder.error ? (
+        <div className="flex flex-1 items-center justify-center p-8">
+          <EmptyState
+            title="Couldn’t load this form"
+            description={errorMessage(builder.error)}
+          />
+        </div>
       ) : (
         <>
           <QuestionList
             questions={questions}
             selectedId={selectedId}
             onSelect={setChosenId}
-            onReorder={(ids) => void builder.reorder(ids)}
+            onReorder={(ids) => void reorder(ids)}
             onAddContent={() => setAddOpen(true)}
             onAddEnding={() => void addBlock("ending")}
           />

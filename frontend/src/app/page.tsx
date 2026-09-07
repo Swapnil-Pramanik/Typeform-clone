@@ -20,6 +20,7 @@ import { Modal } from "@/components/ui/Modal";
 import { LoadingPane } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/format";
+import { errorMessage } from "@/lib/errors";
 import { useFormActions, useForms } from "@/lib/queries";
 import type { FormSummary } from "@/types";
 
@@ -38,8 +39,21 @@ export default function DashboardPage() {
   const [sort, setSort] = useState<SortKey>("updated");
   const [pendingDelete, setPendingDelete] = useState<FormSummary | null>(null);
 
-  const { data: forms, isLoading } = useForms(search || undefined);
+  const { data: forms, isLoading, error, refetch } = useForms(search || undefined);
   const actions = useFormActions();
+
+  /**
+   * Every action here talks to the API, so every one of them can fail — most
+   * often because the backend simply is not running. Routing them through one
+   * wrapper means a failure is always visible, never silence.
+   */
+  const run = async (action: () => Promise<void>) => {
+    try {
+      await action();
+    } catch (failure) {
+      toast.show(errorMessage(failure), "error");
+    }
+  };
 
   const sorted = useMemo(() => {
     const list = [...(forms ?? [])];
@@ -52,38 +66,43 @@ export default function DashboardPage() {
   const responsesCollected =
     forms?.reduce((total, form) => total + form.response_count, 0) ?? 0;
 
-  const create = async () => {
-    const form = await actions.create.mutateAsync("Untitled form");
-    router.push(`/forms/${form.id}/create`);
-  };
+  const create = () =>
+    run(async () => {
+      const form = await actions.create.mutateAsync("Untitled form");
+      router.push(`/forms/${form.id}/create`);
+    });
 
-  const copyLink = async (form: FormSummary) => {
-    if (!form.slug) {
-      toast.show("Publish the form first to get a link.", "error");
-      return;
-    }
-    await navigator.clipboard.writeText(`${window.location.origin}/f/${form.slug}`);
-    toast.show("Link copied", "success");
-  };
+  const copyLink = (form: FormSummary) =>
+    run(async () => {
+      if (!form.slug) {
+        toast.show("Publish the form first to get a link.", "error");
+        return;
+      }
+      await navigator.clipboard.writeText(`${window.location.origin}/f/${form.slug}`);
+      toast.show("Link copied", "success");
+    });
 
-  const rename = async (form: FormSummary) => {
-    const title = window.prompt("Rename form", form.title);
-    if (!title || title === form.title) return;
-    await actions.rename.mutateAsync({ id: form.id, title });
-    toast.show("Renamed", "success");
-  };
+  const rename = (form: FormSummary) =>
+    run(async () => {
+      const title = window.prompt("Rename form", form.title);
+      if (!title || title === form.title) return;
+      await actions.rename.mutateAsync({ id: form.id, title });
+      toast.show("Renamed", "success");
+    });
 
-  const duplicate = async (form: FormSummary) => {
-    const copy = await actions.duplicate.mutateAsync(form.id);
-    toast.show(`Duplicated as “${copy.title}”`, "success");
-  };
+  const duplicate = (form: FormSummary) =>
+    run(async () => {
+      const copy = await actions.duplicate.mutateAsync(form.id);
+      toast.show(`Duplicated as “${copy.title}”`, "success");
+    });
 
-  const confirmDelete = async () => {
-    if (!pendingDelete) return;
-    await actions.remove.mutateAsync(pendingDelete.id);
-    toast.show("Form deleted", "success");
-    setPendingDelete(null);
-  };
+  const confirmDelete = () =>
+    run(async () => {
+      if (!pendingDelete) return;
+      await actions.remove.mutateAsync(pendingDelete.id);
+      toast.show("Form deleted", "success");
+      setPendingDelete(null);
+    });
 
   return (
     <div className="flex h-dvh bg-bg">
@@ -166,6 +185,16 @@ export default function DashboardPage() {
 
             {isLoading ? (
               <LoadingPane label="Loading your forms" />
+            ) : error ? (
+              <EmptyState
+                title="Couldn’t load your forms"
+                description={errorMessage(error)}
+                action={
+                  <Button variant="secondary" onClick={() => void refetch()}>
+                    Try again
+                  </Button>
+                }
+              />
             ) : sorted.length === 0 ? (
               <EmptyState
                 title={search ? "No forms match that search" : "No forms yet"}

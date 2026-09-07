@@ -84,6 +84,13 @@ class Question(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     form: Mapped[Form] = relationship(back_populates="questions")
+    #: Declared so the unit of work knows answers depend on questions and emits
+    #: their DELETE first. ``passive_deletes`` then hands the actual removal to
+    #: the ``ON DELETE CASCADE`` on ``answers.question_id``, which is the real
+    #: guarantee — it also covers bulk deletes that never load an ORM object.
+    answers: Mapped[list["Answer"]] = relationship(  # noqa: F821
+        back_populates="question", passive_deletes=True
+    )
     options: Mapped[list["QuestionOption"]] = relationship(
         back_populates="question",
         cascade="all, delete-orphan",

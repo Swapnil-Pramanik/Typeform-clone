@@ -26,13 +26,21 @@ export const API_BASE =
 export class ApiError extends Error {
   constructor(
     message: string,
+    /** HTTP status, or 0 when the request never reached the server. */
     readonly status: number,
     readonly questionId?: number,
   ) {
     super(message);
     this.name = "ApiError";
   }
+
+  /** True when the API could not be reached at all, rather than refusing. */
+  get isOffline(): boolean {
+    return this.status === 0;
+  }
 }
+
+const offlineMessage = () => `Can't reach the API at ${API_BASE}. Is the backend running?`;
 
 interface ValidationDetail {
   question_id?: number;
@@ -58,11 +66,20 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...init?.headers },
+      cache: "no-store",
+    });
+  } catch {
+    // fetch only rejects when the request never reached the server — a stopped
+    // backend, DNS failure or a CORS preflight refusal. Turning it into an
+    // ApiError here means no caller has to special-case a bare TypeError, and
+    // no failure can surface as silence.
+    throw new ApiError(offlineMessage(), 0);
+  }
 
   if (!response.ok) throw await toApiError(response);
   if (response.status === 204) return undefined as T;

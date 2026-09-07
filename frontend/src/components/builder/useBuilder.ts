@@ -129,16 +129,27 @@ export function useBuilder(formId: number) {
     [client, formId, writeCache],
   );
 
+  /**
+   * Structural changes are written to the cache first so the UI responds at
+   * once, and rolled back if the server refuses. Without the rollback the
+   * builder would keep showing a block list that was never persisted.
+   */
   const deleteQuestion = useCallback(
     async (id: number) => {
+      const previous = client.getQueryData<Form>(keys.form(formId));
       writeCache((form) => ({
         ...form,
         questions: form.questions.filter((question) => question.id !== id),
       }));
-      await api.deleteQuestion(id);
+      try {
+        await api.deleteQuestion(id);
+      } catch (error) {
+        if (previous) client.setQueryData(keys.form(formId), previous);
+        throw error;
+      }
       void client.invalidateQueries({ queryKey: ["forms"] });
     },
-    [client, writeCache],
+    [client, formId, writeCache],
   );
 
   /**
@@ -147,6 +158,7 @@ export function useBuilder(formId: number) {
    */
   const reorder = useCallback(
     async (orderedIds: number[]) => {
+      const previous = client.getQueryData<Form>(keys.form(formId));
       writeCache((form) => ({
         ...form,
         questions: orderedIds
@@ -155,9 +167,15 @@ export function useBuilder(formId: number) {
           .map((question, index) => ({ ...question, position: index })),
       }));
       setSaveState("saving");
-      const updated = await api.reorderQuestions(formId, orderedIds);
-      client.setQueryData(keys.form(formId), updated);
-      setSaveState("saved");
+      try {
+        const updated = await api.reorderQuestions(formId, orderedIds);
+        client.setQueryData(keys.form(formId), updated);
+        setSaveState("saved");
+      } catch (error) {
+        if (previous) client.setQueryData(keys.form(formId), previous);
+        setSaveState("error");
+        throw error;
+      }
     },
     [client, formId, writeCache],
   );

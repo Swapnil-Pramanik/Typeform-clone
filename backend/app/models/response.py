@@ -17,7 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-from app.models.form import Form, utcnow
+from app.models.form import Form, Question, utcnow
 from app.models.types import JSONText
 
 
@@ -61,8 +61,12 @@ class Answer(Base):
     response_id: Mapped[int] = mapped_column(
         ForeignKey("responses.id", ondelete="CASCADE"), nullable=False
     )
+    #: Cascades on delete. An answer outlives its question being *hidden* — that
+    #: is what the soft delete is for — but it cannot outlive the form itself,
+    #: and without the database-level cascade, deleting a form that has
+    #: collected responses violates this constraint.
     question_id: Mapped[int] = mapped_column(
-        ForeignKey("questions.id"), nullable=False
+        ForeignKey("questions.id", ondelete="CASCADE"), nullable=False
     )
     #: Snapshots taken at submit time. If the creator later edits or deletes the
     #: question, this row still reports what was actually asked.
@@ -78,6 +82,7 @@ class Answer(Base):
     display_value: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     response: Mapped[Response] = relationship(back_populates="answers")
+    question: Mapped["Question"] = relationship(back_populates="answers")
 
     __table_args__ = (
         UniqueConstraint("response_id", "question_id", name="uq_answer_response_question"),

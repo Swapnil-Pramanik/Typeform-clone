@@ -101,7 +101,7 @@ Open <http://localhost:3000>. The seeded forms are live at
 ### Checks
 
 ```bash
-cd backend  && .venv/bin/python -m pytest tests   # 10 API tests
+cd backend  && .venv/bin/python -m pytest tests   # 11 API tests
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -197,7 +197,9 @@ drift from what a respondent sees.
 │   ├── alembic.ini
 │   ├── alembic/
 │   │   ├── env.py                   # URL from settings; JSONText → sa.Text()
-│   │   └── versions/0001_initial_schema.py
+│   │   └── versions/
+│   │       ├── 0001_initial_schema.py
+│   │       └── 0002_cascade_answers_on_question_delete.py
 │   ├── tests/
 │   │   ├── conftest.py              # throwaway SQLite per test, injected via DI
 │   │   └── test_api.py              # 10 tests over the schema's invariants
@@ -431,7 +433,7 @@ CREATE INDEX ix_responses_form ON responses (form_id, submitted_at);
 CREATE TABLE answers (
   id              INTEGER PRIMARY KEY,
   response_id     INTEGER NOT NULL REFERENCES responses(id) ON DELETE CASCADE,
-  question_id     INTEGER NOT NULL REFERENCES questions(id),
+  question_id     INTEGER NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
   question_title  TEXT NOT NULL,        -- snapshot at submit time — decision 2
   question_type   VARCHAR(32) NOT NULL, -- snapshot at submit time — decision 2
   text_value      TEXT,
@@ -489,6 +491,13 @@ than a 24-hour build. The equivalent here is:
 table still shows what was actually asked. Delete it and the responses remain
 intact and correctly labelled. This is covered by
 `test_answers_survive_the_question_being_deleted`.
+
+**Why `answers.question_id` still cascades.** Deleting a *question* is a soft
+delete, so its row survives and its answers keep a valid target — that is the
+whole point. A question row is only ever really removed when the entire form is
+deleted, and at that moment its answers should go too. Without the cascade,
+deleting a form that had collected responses fails with `FOREIGN KEY constraint
+failed`. Covered by `test_deleting_a_form_that_has_responses_cascades`.
 
 **What it does not buy:** you cannot reconstruct the whole form as it stood on a
 given date, and an *option* renamed after the fact will change the label shown
@@ -671,7 +680,8 @@ Set `CORS_ORIGINS` on the backend project to the deployed frontend origin plus
 ## 13. Testing
 
 `backend/tests/test_api.py` runs the API end to end against a throwaway SQLite
-file, injected through the `get_db` dependency. Ten tests, each covering one
+file, injected through the `get_db` dependency and configured with
+`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Eleven tests, each covering one
 invariant the design rests on rather than one function:
 
 | Test | Invariant |
@@ -686,6 +696,7 @@ invariant the design rests on rather than one function:
 | `test_duplicate_copies_questions_but_not_responses` | Duplicates are drafts with no slug and no responses. |
 | `test_summary_aggregates_and_partials_lower_the_completion_rate` | AVG/MIN/MAX are right and a partial drops the rate to 0.75. |
 | `test_choice_counts_come_out_per_option` | Multi-select counts land on the right options. |
+| `test_deleting_a_form_that_has_responses_cascades` | Deleting a form with collected answers succeeds and leaves no orphans. |
 
 The frontend is covered by `tsc --noEmit`, ESLint (including the React hooks
 rules) and a production build, all clean.

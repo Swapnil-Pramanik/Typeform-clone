@@ -183,3 +183,23 @@ def test_choice_counts_come_out_per_option(client):
 
     counts = client.get(f"/api/forms/{form['id']}/summary").json()["questions"][0]["choices"]
     assert {c["label"]: c["count"] for c in counts} == {"A": 2, "B": 1, "C": 1}
+
+
+def test_deleting_a_form_that_has_responses_cascades(client):
+    """Regression: answers reference questions, so the cascade order matters.
+
+    Deleting a form removes its questions; without a database-level cascade on
+    ``answers.question_id`` that removal violates the foreign key and the whole
+    delete fails.
+    """
+    form, question = _form_with_question(client)
+    slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+    client.post(
+        f"/api/f/{slug}/responses",
+        json={"answers": [{"question_id": question["id"], "value": "Ada"}]},
+    )
+    assert client.get(f"/api/forms/{form['id']}/responses").json()["total"] == 1
+
+    assert client.delete(f"/api/forms/{form['id']}").status_code == 204
+    assert client.get(f"/api/forms/{form['id']}").status_code == 404
+    assert client.get(f"/api/f/{slug}").status_code == 404
