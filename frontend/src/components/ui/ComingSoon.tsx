@@ -1,11 +1,50 @@
+"use client";
+
+import { useCallback } from "react";
+
 import { Lock } from "@/components/ui/icons";
+import { useToast } from "@/components/ui/Toast";
 
 /**
- * The placeholder every unbuilt area uses.
+ * Everything the product shows but this build does not implement.
  *
- * A styled panel naming what would go here reads as a scope decision; a dead
- * link or a 404 reads as unfinished work.
+ * Two shapes, one message. A whole area — a workspace tab, the Connect screen —
+ * gets the `<ComingSoon>` panel. An individual control that would otherwise sit
+ * there inert gets `useComingSoon()`, which answers a click with a toast naming
+ * the feature.
+ *
+ * The rule is that nothing is silently dead: a control that cannot do anything
+ * still has to say so when pressed, or it reads as a bug rather than a scope
+ * decision.
  */
+
+export function useComingSoon(): (feature: string) => void {
+  const toast = useToast();
+  return useCallback(
+    (feature: string) => toast.show(`Coming soon — ${feature}`),
+    [toast],
+  );
+}
+
+/**
+ * Props for a control that only announces itself. Spread onto a `<button>` so
+ * it stays focusable and keyboard-reachable rather than being `disabled`, which
+ * would swallow the click and tell the user nothing.
+ */
+export function comingSoonProps(
+  announce: (feature: string) => void,
+  feature: string,
+) {
+  return {
+    title: `${feature} — coming soon`,
+    "aria-label": `${feature} (coming soon)`,
+    onClick: (event: { stopPropagation: () => void }) => {
+      event.stopPropagation();
+      announce(feature);
+    },
+  } as const;
+}
+
 export function ComingSoon({
   title,
   description,

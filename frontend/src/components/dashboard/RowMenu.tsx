@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { ChevronRight, Dots } from "@/components/ui/icons";
+import { useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 import type { FormSummary } from "@/types";
 
@@ -30,6 +31,7 @@ export function RowMenu({
   onDuplicate,
   onDelete,
 }: RowMenuProps) {
+  const comingSoon = useComingSoon();
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
 
@@ -84,7 +86,7 @@ export function RowMenu({
 
           <Separator />
           <LinkItem href={`/forms/${form.id}/create`}>Content</LinkItem>
-          <Item disabled title="Coming soon">
+          <Item onClick={run(() => comingSoon("Workflow"))} muted>
             Workflow
           </Item>
           <LinkItem href={`/forms/${form.id}/connect`}>Connect</LinkItem>
@@ -94,10 +96,18 @@ export function RowMenu({
           <Separator />
           <Item onClick={run(onRename)}>Rename</Item>
           <Item onClick={run(onDuplicate)}>Duplicate</Item>
-          <Item disabled title="Coming soon" trailing={<ChevronRight width={15} height={15} />}>
+          <Item
+            onClick={run(() => comingSoon("Copy to another workspace"))}
+            muted
+            trailing={<ChevronRight width={15} height={15} />}
+          >
             Copy to
           </Item>
-          <Item disabled title="Coming soon" trailing={<ChevronRight width={15} height={15} />}>
+          <Item
+            onClick={run(() => comingSoon("Move to another workspace"))}
+            muted
+            trailing={<ChevronRight width={15} height={15} />}
+          >
             Move to
           </Item>
 
@@ -122,6 +132,7 @@ function Item({
   children,
   onClick,
   disabled,
+  muted,
   tone,
   title,
   trailing,
@@ -129,6 +140,8 @@ function Item({
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  /** Out of scope: still pressable, so it can say so, but visually secondary. */
+  muted?: boolean;
   tone?: "danger";
   title?: string;
   trailing?: ReactNode;
@@ -139,14 +152,16 @@ function Item({
       role="menuitem"
       onClick={onClick}
       disabled={disabled}
-      title={title}
+      title={muted ? "Coming soon" : title}
       className={cn(
         ITEM_CLASS,
         disabled
           ? "cursor-not-allowed text-ink-faint/70"
           : tone === "danger"
             ? "text-danger hover:bg-danger/8"
-            : "text-ink hover:bg-muted",
+            : muted
+              ? "text-ink-faint hover:bg-muted hover:text-ink-muted"
+              : "text-ink hover:bg-muted",
       )}
     >
       {children}

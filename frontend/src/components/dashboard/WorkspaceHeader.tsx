@@ -11,6 +11,7 @@ import {
   Invite,
   List,
 } from "@/components/ui/icons";
+import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 
 export type SortKey = "updated" | "created" | "name" | "responses";
@@ -38,14 +39,15 @@ export function WorkspaceHeader({
   layout,
   onLayout,
 }: WorkspaceHeaderProps) {
+  const comingSoon = useComingSoon();
+
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-line px-6 py-4">
       <h1 className="text-[28px] font-normal text-ink-strong">{title}</h1>
 
       <button
         type="button"
-        title="Coming soon"
-        aria-label="Workspace actions"
+        {...comingSoonProps(comingSoon, "Workspace actions")}
         className="rounded-lg p-1.5 text-ink-muted hover:bg-muted hover:text-ink"
       >
         <Dots width={17} height={17} />
@@ -53,19 +55,20 @@ export function WorkspaceHeader({
 
       <button
         type="button"
-        title="Coming soon"
+        {...comingSoonProps(comingSoon, "Inviting teammates")}
         className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[15px] text-ink-muted hover:bg-muted hover:text-ink"
       >
         <Invite width={17} height={17} />
         Invite
       </button>
 
-      <span
-        title="Available on paid plans"
+      <button
+        type="button"
+        {...comingSoonProps(comingSoon, "Paid plan features")}
         className="flex h-6 w-6 items-center justify-center rounded-full border border-brand-line bg-brand-soft text-brand"
       >
         <Gem width={14} height={14} strokeWidth={2} />
-      </span>
+      </button>
 
       <div className="ml-auto flex items-center gap-2">
         <div className="relative">

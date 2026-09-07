@@ -11,6 +11,7 @@
 import { useState } from "react";
 
 import { CaretUp, Mic, Plus, Search, Send, Workspaces } from "@/components/ui/icons";
+import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 import { RESPONSE_LIMIT } from "@/lib/creator";
 
@@ -31,6 +32,7 @@ export function Sidebar({
   responsesCollected,
   formCount,
 }: SidebarProps) {
+  const comingSoon = useComingSoon();
   const [privateOpen, setPrivateOpen] = useState(true);
   const used = Math.min(responsesCollected / RESPONSE_LIMIT, 1);
 
@@ -69,8 +71,7 @@ export function Sidebar({
           </span>
           <button
             type="button"
-            title="Coming soon"
-            aria-label="New workspace"
+            {...comingSoonProps(comingSoon, "Multiple workspaces")}
             className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-panel text-ink-muted hover:text-ink"
           >
             <Plus width={15} height={15} />
@@ -120,7 +121,7 @@ export function Sidebar({
           </p>
           <button
             type="button"
-            title="Coming soon"
+            {...comingSoonProps(comingSoon, "Raising the response limit")}
             className="mt-3 rounded-lg border border-line bg-panel px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
           >
             Increase response limit
@@ -132,13 +133,13 @@ export function Sidebar({
             <div className="flex items-center gap-2 rounded-lg border border-ai-ring bg-panel px-3 py-2">
               <Mic width={17} height={17} className="shrink-0 text-ink-muted" />
               <span aria-hidden="true" className="h-4 w-px bg-line" />
-              <input
-                disabled
-                title="Coming soon"
-                placeholder="Ask Typeform AI"
-                aria-label="Ask Typeform AI (coming soon)"
-                className="w-full bg-transparent text-[15px] placeholder:text-ink-muted focus:outline-none"
-              />
+              <button
+                type="button"
+                {...comingSoonProps(comingSoon, "Typeform AI")}
+                className="flex-1 bg-transparent text-left text-[15px] text-ink-muted"
+              >
+                Ask Typeform AI
+              </button>
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-ink-faint">
                 <Send width={15} height={15} />
               </span>

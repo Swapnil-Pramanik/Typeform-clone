@@ -887,8 +887,20 @@ product puts the feature:
 | Row menu | *Workflow*, *Copy to*, *Move to* |
 | Sidebar | *New workspace* |
 
-A polished "Coming soon" panel reads as a scope decision. A 404 reads as
-unfinished.
+**Nothing is silently dead.** A whole area — a workspace tab, the Connect screen
+— gets the `ComingSoon` panel. An individual control that would otherwise sit
+there inert stays pressable and answers with a toast naming the feature
+(`Coming soon — Integrations`), because a button that does nothing when pressed
+reads as a bug, while one that says why reads as a decision. Both come from
+`components/ui/ComingSoon.tsx`, so the wording cannot drift.
+
+The controls wired this way: the account switcher, Integrations, Brand kit, View
+plans, Help and the avatar in the top bar; Research Flow and the plan gems; the
+workspace `⋯`, Invite, New workspace, Increase response limit and the AI
+composer; the per-row Integrations button; Workflow, Copy to and Move to in the
+row menu; the Video segment, Randomize, "Other", "None", Vertical alignment, the
+image slot, Logic and Comments in the settings panel; and every greyed-out block
+type plus the Import questions and Create with AI tabs in the add-element modal.
 
 **9. The top nav is Content · Connect · Share · Results.** The current product's
 nav reads Content · Workflow · Connect. This keeps the same shape but gives the

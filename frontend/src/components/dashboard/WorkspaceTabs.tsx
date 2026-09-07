@@ -9,6 +9,7 @@
  */
 
 import { Gem, NavAutomations, NavContacts, NavForms, NavInsights, NavResearch } from "@/components/ui/icons";
+import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 
 export const WORKSPACE_TABS = [
@@ -26,6 +27,8 @@ interface WorkspaceTabsProps {
 }
 
 export function WorkspaceTabs({ active, onSelect }: WorkspaceTabsProps) {
+  const comingSoon = useComingSoon();
+
   return (
     <nav className="flex h-14 shrink-0 items-center gap-1 border-b-2 border-groove bg-canvas px-4">
       {WORKSPACE_TABS.map((tab) => {
@@ -36,7 +39,6 @@ export function WorkspaceTabs({ active, onSelect }: WorkspaceTabsProps) {
             <button
               type="button"
               onClick={() => onSelect(tab.name)}
-              title={tab.available ? undefined : "Coming soon"}
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex items-center gap-2 rounded-lg px-3 py-2 text-[14px] font-medium transition-colors",
@@ -50,12 +52,13 @@ export function WorkspaceTabs({ active, onSelect }: WorkspaceTabsProps) {
             </button>
 
             {"gem" in tab && tab.gem && (
-              <span
-                title="Available on paid plans"
+              <button
+                type="button"
+                {...comingSoonProps(comingSoon, "Paid plan features")}
                 className="ml-1.5 flex h-[22px] w-[22px] items-center justify-center rounded-full border border-brand-line bg-brand-soft text-brand"
               >
                 <Gem width={13} height={13} strokeWidth={2} />
-              </span>
+              </button>
             )}
 
             {isActive && (
@@ -72,7 +75,7 @@ export function WorkspaceTabs({ active, onSelect }: WorkspaceTabsProps) {
 
       <button
         type="button"
-        title="Coming soon"
+        {...comingSoonProps(comingSoon, "Research Flow")}
         className="flex items-center gap-2 rounded-lg px-3 py-2 text-[14px] font-medium text-ink-muted hover:bg-muted hover:text-ink"
       >
         <NavResearch width={18} height={18} />

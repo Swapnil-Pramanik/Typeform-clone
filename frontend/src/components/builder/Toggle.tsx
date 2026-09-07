@@ -1,5 +1,6 @@
 "use client";
 
+import { useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 
 interface ToggleProps {
@@ -20,6 +21,7 @@ export function Toggle({
   comingSoon,
   hint,
 }: ToggleProps) {
+  const announce = useComingSoon();
   const inert = disabled || comingSoon;
 
   return (
@@ -36,8 +38,8 @@ export function Toggle({
         role="switch"
         aria-checked={checked}
         aria-label={label}
-        disabled={inert}
-        onClick={() => onChange(!checked)}
+        disabled={disabled}
+        onClick={() => (comingSoon ? announce(label) : onChange(!checked))}
         className={cn(
           "relative h-[20px] w-[34px] shrink-0 rounded-full transition-colors",
           checked ? "bg-accent" : "bg-line-strong",

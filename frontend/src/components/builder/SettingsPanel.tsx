@@ -14,6 +14,7 @@ import { useState } from "react";
 
 import { Toggle } from "@/components/builder/Toggle";
 import { ChevronDown, Lock, Sparkle, Trash } from "@/components/ui/icons";
+import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 import { ANSWER_TYPES, BLOCKS, isChoiceType } from "@/lib/questionTypes";
 import type {
@@ -62,7 +63,7 @@ export function SettingsPanel({
         {!isEnding && (
           <>
             <Section title="Question">
-              <SegmentedControl options={["Text", "Video"]} />
+              <SegmentedControl options={["Text", "Video"]} comingSoon={["Video"]} />
             </Section>
 
             <Section title="Answer">
@@ -149,9 +150,7 @@ export function SettingsPanel({
             </Section>
 
             <Section title="Image or video">
-              <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-line text-[12px] text-ink-faint">
-                Drop an image here
-              </div>
+              <ImageSlot />
             </Section>
           </>
         )}
@@ -205,12 +204,12 @@ function Section({
 
 /** Logic and Comments are pinned to the bottom in the real panel. */
 function PinnedSection({ title, icon }: { title: string; icon: React.ReactNode }) {
+  const comingSoon = useComingSoon();
   return (
     <button
       type="button"
-      disabled
-      title="Coming soon"
-      className="flex w-full items-center justify-between px-4 py-3 text-[13px] text-ink-faint"
+      {...comingSoonProps(comingSoon, title)}
+      className="flex w-full items-center justify-between px-4 py-3 text-[13px] text-ink-faint hover:bg-muted"
     >
       <span className="flex items-center gap-2">
         {icon}
@@ -223,7 +222,15 @@ function PinnedSection({ title, icon }: { title: string; icon: React.ReactNode }
   );
 }
 
-function SegmentedControl({ options }: { options: string[] }) {
+function SegmentedControl({
+  options,
+  comingSoon = [],
+}: {
+  options: string[];
+  /** Segments that exist in the real panel but do nothing here. */
+  comingSoon?: string[];
+}) {
+  const announce = useComingSoon();
   const [active, setActive] = useState(options[0]);
   return (
     <div className="flex rounded-lg bg-muted p-0.5">
@@ -231,7 +238,10 @@ function SegmentedControl({ options }: { options: string[] }) {
         <button
           key={option}
           type="button"
-          onClick={() => setActive(option)}
+          title={comingSoon.includes(option) ? "Coming soon" : undefined}
+          onClick={() =>
+            comingSoon.includes(option) ? announce(option) : setActive(option)
+          }
           className={cn(
             "flex-1 rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
             active === option ? "bg-bg text-ink shadow-sm" : "text-ink-muted",
@@ -310,5 +320,20 @@ function WelcomeSettings({
         </button>
       </div>
     </aside>
+  );
+}
+
+
+/** The image/video slot: a real placement in the panel, with nothing behind it. */
+function ImageSlot() {
+  const comingSoon = useComingSoon();
+  return (
+    <button
+      type="button"
+      {...comingSoonProps(comingSoon, "Question images and video")}
+      className="flex h-24 w-full items-center justify-center rounded-lg border border-dashed border-line text-[12px] text-ink-faint hover:bg-muted"
+    >
+      Drop an image here
+    </button>
   );
 }

@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 
 import { Modal } from "@/components/ui/Modal";
 import { Search, Sparkle } from "@/components/ui/icons";
+import { useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 import { BLOCK_GROUPS, RECOMMENDED, type BlockMeta } from "@/lib/questionTypes";
 import type { QuestionType } from "@/types";
@@ -33,6 +34,7 @@ export function AddElementModal({
   onPick,
   onPickWelcome,
 }: AddElementModalProps) {
+  const comingSoon = useComingSoon();
   const [tab, setTab] = useState<Tab>(TABS[0]);
   const [query, setQuery] = useState("");
 
@@ -48,7 +50,10 @@ export function AddElementModal({
   }, [query]);
 
   const choose = (block: BlockMeta) => {
-    if (!block.supported) return;
+    if (!block.supported) {
+      comingSoon(block.label);
+      return;
+    }
     if (block.action === "welcome") onPickWelcome();
     else if (block.type) onPick(block.type);
     else return;
@@ -64,7 +69,10 @@ export function AddElementModal({
             <button
               key={name}
               type="button"
-              onClick={() => setTab(name)}
+              onClick={() => {
+                setTab(name);
+                if (name !== TABS[0]) comingSoon(name);
+              }}
               className={cn(
                 "-mb-px border-b-2 px-3 py-2.5 text-[13px] font-medium transition-colors",
                 tab === name
@@ -152,14 +160,13 @@ function BlockButton({
   return (
     <button
       type="button"
-      disabled={!block.supported}
       title={block.supported ? undefined : "Coming soon"}
       onClick={() => onPick(block)}
       className={cn(
         "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px]",
         block.supported
           ? "text-ink hover:bg-muted"
-          : "cursor-not-allowed text-ink-faint/70",
+          : "text-ink-faint/70 hover:bg-muted",
       )}
     >
       <span

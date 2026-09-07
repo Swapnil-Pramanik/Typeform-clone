@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { FormThumbnail } from "@/components/dashboard/FormThumbnail";
 import { RowMenu } from "@/components/dashboard/RowMenu";
 import { Integrations } from "@/components/ui/icons";
+import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { cn, percent, relativeTime, shortDate } from "@/lib/format";
 import type { FormSummary } from "@/types";
 
@@ -36,6 +37,7 @@ function completion(form: FormSummary): string {
 }
 
 export function FormTable({ forms, layout, ...actions }: FormTableProps) {
+  const comingSoon = useComingSoon();
   const router = useRouter();
   const open = (form: FormSummary) => router.push(`/forms/${form.id}/create`);
 
@@ -113,9 +115,7 @@ export function FormTable({ forms, layout, ...actions }: FormTableProps) {
               <span>
                 <button
                   type="button"
-                  title="Coming soon"
-                  aria-label="Integrations"
-                  onClick={(event) => event.stopPropagation()}
+                  {...comingSoonProps(comingSoon, "Integrations")}
                   className="rounded-lg border border-line p-1.5 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100"
                 >
                   <Integrations width={16} height={16} />

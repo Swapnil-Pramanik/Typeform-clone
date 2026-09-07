@@ -9,16 +9,19 @@
  */
 
 import { ComingSoonButton } from "@/components/dashboard/ComingSoonButton";
+import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { BrandKit, ChevronDown, Help, Integrations } from "@/components/ui/icons";
 import { CREATOR } from "@/lib/creator";
 
 export function TopBar() {
+  const comingSoon = useComingSoon();
+
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 bg-bg px-4">
       <button
         type="button"
-        title="Coming soon"
+        {...comingSoonProps(comingSoon, "Switching account")}
         className="flex items-center gap-2.5 rounded-lg px-1.5 py-1 text-[15px] text-ink hover:bg-muted"
       >
         <span className="flex h-[30px] w-[30px] items-center justify-center rounded-[9px] bg-avatar-green text-[13px] font-semibold text-white">
@@ -38,7 +41,7 @@ export function TopBar() {
 
         <button
           type="button"
-          title="Coming soon"
+          {...comingSoonProps(comingSoon, "Plans and billing")}
           className="ml-1 rounded-lg bg-brand px-3.5 py-2 text-[14px] font-medium text-brand-ink transition-opacity hover:opacity-90"
         >
           View plans
@@ -48,19 +51,19 @@ export function TopBar() {
 
         <button
           type="button"
-          title="Coming soon"
-          aria-label="Help"
+          {...comingSoonProps(comingSoon, "Help centre")}
           className="rounded-lg p-1.5 text-ink-muted hover:bg-muted hover:text-ink"
         >
           <Help width={18} height={18} />
         </button>
 
-        <span
+        <button
+          type="button"
+          {...comingSoonProps(comingSoon, "Account settings")}
           className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-avatar-tan text-[12px] font-semibold text-ink-strong"
-          title={CREATOR.handle}
         >
           {CREATOR.initials}
-        </span>
+        </button>
       </div>
     </header>
   );
