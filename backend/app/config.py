@@ -24,9 +24,17 @@ class Settings(BaseSettings):
     #: mangle. Ignored for local SQLite.
     database_auth_token: str | None = None
     cors_origins: str = "http://localhost:3000"
+    #: Optional regex for origins that change on every deploy. Vercel mints a new
+    #: hostname per deployment, so an explicit list goes stale constantly; this
+    #: lets preview builds call the API without re-editing an environment
+    #: variable each time. Ignored when empty.
+    cors_origin_regex: str | None = None
     creator_name: str = "Swapnil"
 
-    @field_validator("database_url", "database_auth_token", "cors_origins", mode="before")
+    @field_validator(
+        "database_url", "database_auth_token", "cors_origins", "cors_origin_regex",
+        mode="before",
+    )
     @classmethod
     def _tidy(cls, value: object) -> object:
         """Trim whitespace and matching quotes from values set in a host's UI.

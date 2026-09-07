@@ -677,6 +677,7 @@ badge; the final question's button reads **Submit**, not OK.
 | `DATABASE_URL` | `sqlite:///./typeform.db` | Production: `sqlite+libsql://<db>.turso.io?secure=true` |
 | `DATABASE_AUTH_TOKEN` | unset | Turso token. Kept out of the URL — see below. |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated. Add the deployed frontend origin. |
+| `CORS_ORIGIN_REGEX` | unset | Optional. Admits origins that change per deployment, e.g. `https://typeform-clone-frontend.*\.vercel\.app`. |
 
 Turso issues the host and the token as two separate values, and they stay two
 settings. A credential embedded in a connection string is easy to leak in a log
@@ -763,7 +764,14 @@ set -a && . ./.env.production && set +a
   while looking perfectly healthy. `routes` passes the original path through.
 
 Set `CORS_ORIGINS` on the backend project to the deployed frontend origin plus
-`http://localhost:3000`.
+`http://localhost:3000`. Because Vercel mints a new hostname for every
+deployment, an explicit list goes stale as soon as you push again — set
+`CORS_ORIGIN_REGEX` as well so preview builds keep working:
+
+```
+CORS_ORIGINS       https://typeform-clone-frontend.vercel.app,http://localhost:3000
+CORS_ORIGIN_REGEX  https://typeform-clone-frontend.*\.vercel\.app
+```
 
 ---
 

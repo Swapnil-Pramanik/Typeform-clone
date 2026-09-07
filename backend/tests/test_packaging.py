@@ -52,3 +52,21 @@ def test_settings_tolerate_pasted_whitespace_and_quotes():
     assert dirty.database_url == "sqlite+libsql://host?secure=true"
     assert dirty.database_auth_token == "eyJhbGciOiJFZERTQSJ9.body.sig"
     assert dirty.cors_origins == "http://localhost:3000"
+
+
+def test_cors_origin_regex_admits_preview_deployments():
+    """Deployment hostnames change per build; a regex keeps previews working."""
+    from fastapi.testclient import TestClient
+
+    from app.config import Settings, get_settings
+    from app.main import app
+
+    get_settings.cache_clear()
+    original = app.dependency_overrides.copy()
+    try:
+        settings = Settings(cors_origin_regex=r"https://typeform-clone-.*\.vercel\.app")
+        assert settings.cors_origin_regex == r"https://typeform-clone-.*\.vercel\.app"
+        assert settings.allowed_origins == ["http://localhost:3000"]
+    finally:
+        app.dependency_overrides = original
+        get_settings.cache_clear()
