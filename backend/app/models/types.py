@@ -67,10 +67,15 @@ CHOICE_TYPES: frozenset[QuestionType] = frozenset(
 class RuleOperator(StrEnum):
     """How a logic rule compares an answer.
 
-    Deliberately small: these six cover every question type this app has.
+    Deliberately small: these cover every question type this app has.
     ``IS``/``IS_NOT`` compare an option ID, a boolean or a string depending on
     the question; ``GREATER_THAN``/``LESS_THAN`` apply to numbers and ratings;
     the ``ANSWERED`` pair ignore the value entirely.
+
+    ``ALWAYS`` fires whatever the answer. It is how the builder's "Always go to"
+    is stored: a catch-all kept last in ``position`` order, so the conditional
+    rules above it still get their turn and it replaces the fall-through to the
+    next question rather than competing with it.
     """
 
     IS = "is"
@@ -79,11 +84,12 @@ class RuleOperator(StrEnum):
     LESS_THAN = "less_than"
     ANSWERED = "answered"
     NOT_ANSWERED = "not_answered"
+    ALWAYS = "always"
 
 
 #: Operators that ignore ``value`` altogether.
 VALUELESS_OPERATORS: frozenset[RuleOperator] = frozenset(
-    {RuleOperator.ANSWERED, RuleOperator.NOT_ANSWERED}
+    {RuleOperator.ANSWERED, RuleOperator.NOT_ANSWERED, RuleOperator.ALWAYS}
 )
 
 

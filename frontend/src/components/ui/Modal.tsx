@@ -15,9 +15,21 @@ interface ModalProps {
   children: ReactNode;
   /** `lg` is the add-element modal; `md` suits confirmations and share panels. */
   size?: "md" | "lg";
+  /**
+   * Accessible name for a dialog that draws its own header instead of passing
+   * `title` — without it such a dialog would announce as unnamed.
+   */
+  label?: string;
 }
 
-export function Modal({ open, onClose, title, children, size = "md" }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  size = "md",
+  label,
+}: ModalProps) {
   const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,7 +61,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
             ref={panel}
             role="dialog"
             aria-modal="true"
-            aria-label={title}
+            aria-label={title ?? label}
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.985 }}

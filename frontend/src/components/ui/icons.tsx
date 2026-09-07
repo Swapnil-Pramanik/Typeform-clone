@@ -266,6 +266,30 @@ export const Settings = (p: IconProps) => (
     <path d="M19.9 14.6a1.5 1.5 0 0 0 .3 1.65l.05.05a1.8 1.8 0 1 1-2.55 2.55l-.05-.05a1.5 1.5 0 0 0-1.65-.3 1.5 1.5 0 0 0-.9 1.37v.13a1.8 1.8 0 1 1-3.6 0v-.07a1.5 1.5 0 0 0-.98-1.37 1.5 1.5 0 0 0-1.65.3l-.05.05A1.8 1.8 0 1 1 6.27 16.4l.05-.05a1.5 1.5 0 0 0 .3-1.65 1.5 1.5 0 0 0-1.37-.9h-.13a1.8 1.8 0 1 1 0-3.6h.07a1.5 1.5 0 0 0 1.37-.98 1.5 1.5 0 0 0-.3-1.65l-.05-.05A1.8 1.8 0 1 1 8.66 4.97l.05.05a1.5 1.5 0 0 0 1.65.3h.07a1.5 1.5 0 0 0 .9-1.37v-.13a1.8 1.8 0 1 1 3.6 0v.07a1.5 1.5 0 0 0 .9 1.37 1.5 1.5 0 0 0 1.65-.3l.05-.05a1.8 1.8 0 1 1 2.55 2.55l-.05.05a1.5 1.5 0 0 0-.3 1.65v.07a1.5 1.5 0 0 0 1.37.9h.13a1.8 1.8 0 1 1 0 3.6h-.07a1.5 1.5 0 0 0-1.37.9Z" />
   </Icon>
 );
+export const Info = (p: IconProps) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.8h.01" /></Icon>
+);
+/** The logic sections' glyphs: cut a question out, fork a path, add up a score. */
+export const Scissors = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="6" cy="6.5" r="2.2" />
+    <circle cx="6" cy="17.5" r="2.2" />
+    <path d="M8 7.6 19 17M8 16.4 19 7" />
+  </Icon>
+);
+export const Branch = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 12h4.5M8.5 12c2.5 0 2.5-5 5-5H19M8.5 12c2.5 0 2.5 5 5 5H19" />
+    <circle cx="20.5" cy="7" r="1.6" />
+    <circle cx="20.5" cy="17" r="1.6" />
+  </Icon>
+);
+export const Calculator = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="5" y="3" width="14" height="18" rx="2.5" />
+    <path d="M8.5 7.5h7M8.7 12h.01M12 12h.01M15.3 12h.01M8.7 16.4h.01M12 16.4h.01M15.3 16.4h.01" />
+  </Icon>
+);
 export const Layers = (p: IconProps) => (
   <Icon {...p}><path d="m12 3 8 4.5-8 4.5-8-4.5Z" /><path d="m4 12.5 8 4.5 8-4.5" /></Icon>
 );

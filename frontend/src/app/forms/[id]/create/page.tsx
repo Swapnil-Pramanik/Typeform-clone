@@ -15,7 +15,7 @@ import { FormSettingsModal } from "@/components/builder/FormSettingsModal";
 import { FormShell } from "@/components/builder/FormShell";
 import { PreviewPane } from "@/components/builder/PreviewPane";
 import { DesignSettings } from "@/components/builder/DesignSettings";
-import type { DraftRule } from "@/components/builder/LogicPanel";
+import { LogicModal, type RuleChange } from "@/components/builder/LogicModal";
 import { QuestionList } from "@/components/builder/QuestionList";
 import { SaveIndicator } from "@/components/builder/SaveIndicator";
 import { SettingsPanel } from "@/components/builder/SettingsPanel";
@@ -45,8 +45,8 @@ export default function BuilderPage({
 
   const [chosen, setChosen] = useState<Selection | null>(null);
   const [addOpen, setAddOpen] = useState(false);
-  const [logicError, setLogicError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [logicOpen, setLogicOpen] = useState(false);
 
   const questions = useMemo(
     () => builder.form?.questions ?? [],
@@ -106,31 +106,28 @@ export default function BuilderPage({
   const reorder = (ids: number[]) => run(() => builder.reorder(ids));
 
   /**
-   * A rule may jump to any block after this one, plus any ending. Offering an
-   * earlier question would let an author build a loop the server would then
-   * refuse, so the choice is narrowed to targets that cannot close one.
+   * Save the dialog's draft: one write per question whose rules changed.
+   *
+   * Sequential, not parallel, because the server refuses a rule set that would
+   * loop — and it judges each write against the rules already stored. Writing
+   * them in the author's own order means a refusal names the block that caused
+   * it, and any write after it simply does not happen.
    */
-  const logicTargets = useMemo(() => {
-    if (!selected || selected.type === "ending") return [];
-    const position = questions.findIndex((q) => q.id === selected.id);
-    return questions.filter(
-      (q, index) => q.id !== selected.id && (index > position || q.type === "ending"),
-    );
-  }, [questions, selected]);
-
-  const saveRules = (rules: DraftRule[]) => {
-    if (!selected) return;
-    setLogicError(null);
-    void builder
-      .setRules(
-        selected.id,
-        rules.map((rule) => ({
+  const saveRules = async (changes: RuleChange[]) => {
+    for (const change of changes) {
+      await builder.setRules(
+        change.questionId,
+        change.rules.map((rule) => ({
           operator: rule.operator,
           value: rule.value,
           target_question_id: rule.target_question_id,
         })),
-      )
-      .catch((failure) => setLogicError(errorMessage(failure)));
+      );
+    }
+    toast.show(
+      changes.length === 1 ? "Logic saved" : `Logic saved on ${changes.length} blocks`,
+      "success",
+    );
   };
 
   /** Adding a welcome screen is a form patch, not a new question row. */
@@ -213,9 +210,11 @@ export default function BuilderPage({
                 selected && builder.patchQuestion(selected.id, patch)
               }
               onDelete={() => void removeSelected()}
-            logicTargets={logicTargets}
-            onRulesChange={saveRules}
-            logicError={logicError}
+              onOpenLogic={
+                selected && selected.type !== "ending"
+                  ? () => setLogicOpen(true)
+                  : undefined
+              }
               welcome={selection.kind === "welcome" ? welcome : null}
               onWelcomePatch={(patch) =>
                 builder.patchForm({ welcome_screen: { ...welcome, ...patch } })
@@ -226,6 +225,14 @@ export default function BuilderPage({
               }}
             />
           )}
+
+          <LogicModal
+            open={logicOpen}
+            onClose={() => setLogicOpen(false)}
+            questions={questions}
+            initialQuestionId={selected?.id ?? null}
+            onSave={saveRules}
+          />
 
           <FormSettingsModal
             open={settingsOpen}

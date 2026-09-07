@@ -44,7 +44,9 @@ export type RuleOperator =
   | "greater_than"
   | "less_than"
   | "answered"
-  | "not_answered";
+  | "not_answered"
+  /** The "Always go to" fallback: stored last, fires whatever the answer. */
+  | "always";
 
 /** One branching rule: if this answer matches, go to `target_question_id`. */
 export interface QuestionRule {

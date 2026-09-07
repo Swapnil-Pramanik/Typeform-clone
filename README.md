@@ -47,7 +47,7 @@ conversational flow.
 | | Add-element modal with the real product's block catalogue | Built |
 | | Welcome screens: add, edit, button label, estimated time | Built |
 | | Per-form theme — question colour, background, font | Built |
-| | **Logic jumps** — branch on an answer; loops refused at authoring time | Built |
+| | **Logic jumps** — a Logic dialog per block: branch on an answer, or always jump | Built |
 | | Form settings — display switches, and open/closed | Built |
 | **Publishing** | Publish / unpublish; slug minted once and kept forever | Built |
 | | Public fill page needing no account | Built |
@@ -290,7 +290,8 @@ drift from what a respondent sees.
         │   │   ├── EditableChoiceList.tsx
         │   │   ├── SettingsPanel.tsx         # right panel, per block
         │   │   ├── DesignSettings.tsx        # right panel, per form: colour/bg/font
-        │   │   ├── LogicPanel.tsx            # the branching rule editor
+        │   │   ├── LogicModal.tsx            # the Logic dialog: four sections
+        │   │   ├── BranchingRules.tsx        # the branching rule editor
         │   │   ├── PanelRow.tsx             # the settings panel's row shapes
         │   │   ├── BuilderToolbar.tsx        # Add content · Design · tools
         │   │   ├── AddElementModal.tsx
@@ -926,6 +927,9 @@ invariant the design rests on rather than one function:
 | `test_a_required_question_on_the_taken_branch_still_blocks` | …and one on the path taken still does. |
 | `test_a_loop_is_refused_when_the_rule_is_written` | A rule set that cycles is rejected, and leaves nothing behind. |
 | `test_a_rule_pointing_at_a_deleted_question_is_ignored` | Soft-deleting a target cannot strand a respondent. |
+| `test_always_skips_the_next_question_whatever_the_answer` | "Always go to" takes the block off the path, so its required flag cannot block. |
+| `test_conditional_rules_outrank_the_always_rule_below_them` | List order really is precedence: the catch-all only fires once the others decline. |
+| `test_always_replaces_the_fall_through_rather_than_racing_it` | The cycle checker stops believing in an edge the always rule removed. |
 
 The frontend is covered by `tsc --noEmit`, ESLint (including the React hooks
 rules) and a production build, all clean.
@@ -973,7 +977,9 @@ product puts the feature:
 | Placement | What is stubbed |
 |---|---|
 | Builder → *Connect* tab | Webhooks, Google Sheets, Slack, Zapier, HubSpot, Airtable |
-| Settings panel → *Comments* | Per-block comments. (*Logic* is real — see the branching section.) |
+| Settings panel → *Comments* | Per-block comments. (*Logic* is real — see assumption 11.) |
+| Logic dialog → *Question display*, *Hide answer choices* | Showing or hiding a block, or individual choices, from a condition |
+| Logic dialog → *Calculations* | Scores and variables accumulated across answers |
 | Form settings → *Access & Scheduling* | Scheduling a close date, a response limit, and a password. Open/closed is real. |
 | Form settings → *Language*, *Block references* | Respondent-facing translations; piping earlier answers into later questions |
 | Form settings → *Form mode* | Only *Universal* is modelled; Score and Quiz describe behaviour this engine does not have |
@@ -999,7 +1005,8 @@ The controls wired this way: the account switcher, Integrations, Brand kit, View
 plans, Help and the avatar in the top bar; Research Flow and the plan gems; the
 workspace `⋯`, Invite, New workspace and the AI composer; the per-row Integrations button; Workflow, Copy to and Move to in the
 row menu; the Video segment, Randomize, "Other", "None", Vertical alignment, the
-image slot, Logic and Comments in the settings panel; and every greyed-out block
+image slot and Comments in the settings panel; the three unbuilt sections of the
+Logic dialog; and every greyed-out block
 type plus the Import questions and Create with AI tabs in the add-element modal.
 
 **9. The top nav is Content · Connect · Share · Results.** The current product's
@@ -1015,10 +1022,23 @@ need positions; a form has at most one welcome screen.
 **11. Branching is per-question rules, not a flow-graph editor.** A rule is one
 row: an operator, a compared value and a target. They evaluate in order and the
 first match wins, so the list *is* the precedence — nothing to learn beyond
-reading top to bottom. That covers skip-ahead and simple forks; what it does not
-model is a rule depending on *several* earlier answers, or arithmetic over them.
+reading top to bottom. "Always go to" is the same mechanism rather than a
+separate one: an `always` rule stored last, so the conditional rules above it
+still get their turn and it replaces the fall-through to the next question
+instead of competing with it. That covers skip-ahead and simple forks; what it
+does not model is a rule depending on *several* earlier answers, or arithmetic
+over them.
+
 Cycles are refused when a rule is written and again at publish, because deleting
-or reordering blocks can break a set that was valid when authored.
+or reordering blocks can break a set that was valid when authored. The dialog
+also declines to *offer* a target that would close one: a rule may jump only to a
+later block or an ending, so the common way to build a loop is unreachable from
+the UI and the server's refusal is the backstop, not the first line of defence.
+
+The Logic dialog holds its edits as a draft until Save — the one place in the
+builder that is not autosaved. Rules are where a half-finished change can strand
+a respondent mid-form, so a Cancel that really discards is worth more here than
+the consistency of saving on every keystroke.
 
 **12. Nothing in the chrome hardcodes a colour, including a switch knob.** The
 knob takes `--tf-accent-ink` when the track is the accent and `--tf-switch-knob`

@@ -14,7 +14,6 @@
  * makes the panel read as the real product, and pressing one says so.
  */
 
-import { LogicPanel, type DraftRule } from "@/components/builder/LogicPanel";
 import { AddRow, Divider, Field, PANEL_INPUT, Row } from "@/components/builder/PanelRow";
 import { Toggle } from "@/components/builder/Toggle";
 import { Dropdown } from "@/components/ui/Dropdown";
@@ -42,9 +41,8 @@ interface SettingsPanelProps {
   welcome?: WelcomeScreenData | null;
   onWelcomePatch?: (patch: Partial<WelcomeScreenData>) => void;
   onWelcomeRemove?: () => void;
-  logicTargets?: Question[];
-  onRulesChange?: (rules: DraftRule[]) => void;
-  logicError?: string | null;
+  /** Opens the Logic dialog on this block. Absent for blocks that cannot branch. */
+  onOpenLogic?: () => void;
 }
 
 function Shell({ children }: { children?: React.ReactNode }) {
@@ -82,9 +80,7 @@ export function SettingsPanel({
   welcome,
   onWelcomePatch,
   onWelcomeRemove,
-  logicTargets = [],
-  onRulesChange,
-  logicError = null,
+  onOpenLogic,
 }: SettingsPanelProps) {
   if (welcome && onWelcomePatch && onWelcomeRemove) {
     return (
@@ -187,16 +183,18 @@ export function SettingsPanel({
       <AddRow label="Image or video" comingSoonLabel="Question images and video" />
 
       <PinnedSections>
-        {onRulesChange ? (
-          <div className="px-4 py-3">
-            <p className="mb-2 text-[14px] text-ink">Logic</p>
-            <LogicPanel
-              question={question}
-              targets={logicTargets}
-              onChange={onRulesChange}
-              error={logicError}
-            />
-          </div>
+        {onOpenLogic ? (
+          <AddRow
+            label="Logic"
+            onAdd={onOpenLogic}
+            trailing={
+              question.rules.length > 0 ? (
+                <span className="rounded-full bg-accent px-1.5 text-[10px] font-semibold text-accent-ink">
+                  {question.rules.length}
+                </span>
+              ) : undefined
+            }
+          />
         ) : undefined}
       </PinnedSections>
 

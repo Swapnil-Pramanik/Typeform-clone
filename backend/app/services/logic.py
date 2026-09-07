@@ -11,6 +11,10 @@ How a step is resolved
 2. The first rule whose condition matches wins; the flow jumps to its target.
 3. If no rule matches, the flow falls through to the next question by position.
 
+The builder's "Always go to" is rule 2, not a fourth step: it is an ``always``
+rule stored last, so it wins only once every conditional rule above it has
+declined, and it replaces step 3 rather than sitting beside it.
+
 A rule pointing at a soft-deleted question is ignored rather than followed, so
 deleting a block cannot strand a respondent on something invisible.
 """
@@ -58,6 +62,8 @@ def matches(rule: QuestionRule, question: Question, answer: Any) -> bool:
     """
     operator = RuleOperator(rule.operator)
 
+    if operator is RuleOperator.ALWAYS:
+        return True
     if operator is RuleOperator.ANSWERED:
         return not _is_blank(answer)
     if operator is RuleOperator.NOT_ANSWERED:
@@ -165,6 +171,15 @@ def assert_no_cycles(order: list[Question]) -> None:
             for rule in question.rules
             if rule.target_question_id in by_id
         ]
+        # An "always" rule with a live target consumes the fall-through, so the
+        # next-by-position edge does not exist and must not be searched: adding
+        # it would report loops through a path no respondent can walk.
+        if any(
+            RuleOperator(rule.operator) is RuleOperator.ALWAYS
+            and rule.target_question_id in by_id
+            for rule in question.rules
+        ):
+            return targets
         position = ids.index(question_id)
         if position + 1 < len(ids):
             targets.append(ids[position + 1])

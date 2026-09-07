@@ -7,7 +7,8 @@
  *
  * A step resolves by evaluating the answered question's rules in order and
  * taking the first match; with no match the flow falls through to the next
- * question by position. A rule pointing at a question that is no longer in the
+ * question by position. The builder's "Always go to" is an `always` rule stored
+ * last, so it wins only after every conditional rule has declined. A rule pointing at a question that is no longer in the
  * form is ignored rather than followed.
  */
 
@@ -31,6 +32,7 @@ export function matches(
   question: Question,
   answer: AnswerValue,
 ): boolean {
+  if (rule.operator === "always") return true;
   if (rule.operator === "answered") return !isBlank(answer);
   if (rule.operator === "not_answered") return isBlank(answer);
   if (isBlank(answer)) return false;

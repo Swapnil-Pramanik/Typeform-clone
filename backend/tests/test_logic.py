@@ -145,3 +145,106 @@ def test_a_rule_pointing_at_a_deleted_question_is_ignored(client, branched):
     # is required and unanswered.
     assert response.status_code == 422
     assert response.json()["detail"]["question_id"] == branched["fix"]["id"]
+
+
+# --- "Always go to" ----------------------------------------------------------
+
+
+def test_always_skips_the_next_question_whatever_the_answer(client, branched):
+    """The builder's "Always go to": no condition, so Q2 is never asked."""
+    saved = client.put(
+        f"/api/questions/{branched['recommend']['id']}/rules",
+        json={
+            "rules": [
+                {"operator": "always", "target_question_id": branched["email"]["id"]}
+            ]
+        },
+    )
+    assert saved.status_code == 200, saved.text
+
+    for answer in (True, False):
+        response = client.post(
+            f"/api/f/{branched['slug']}/responses",
+            json={
+                "answers": [
+                    {"question_id": branched["recommend"]["id"], "value": answer},
+                    {"question_id": branched["email"]["id"], "value": "ada@example.com"},
+                ]
+            },
+        )
+        # Q2 is required and unanswered; it does not block, because the always
+        # rule means it was never on the path.
+        assert response.status_code == 200, response.text
+
+
+def test_conditional_rules_outrank_the_always_rule_below_them(client, branched):
+    """Order is precedence, and "Always go to" is stored last for that reason."""
+    client.put(
+        f"/api/questions/{branched['recommend']['id']}/rules",
+        json={
+            "rules": [
+                {"operator": "is", "value": False, "target_question_id": branched["fix"]["id"]},
+                {"operator": "always", "target_question_id": branched["email"]["id"]},
+            ]
+        },
+    )
+
+    # "no" takes the conditional rule, so the required Q2 is on the path.
+    blocked = client.post(
+        f"/api/f/{branched['slug']}/responses",
+        json={"answers": [{"question_id": branched["recommend"]["id"], "value": False}]},
+    )
+    assert blocked.status_code == 422
+    assert blocked.json()["detail"]["question_id"] == branched["fix"]["id"]
+
+    # "yes" falls past it to the always rule.
+    allowed = client.post(
+        f"/api/f/{branched['slug']}/responses",
+        json={"answers": [{"question_id": branched["recommend"]["id"], "value": True}]},
+    )
+    assert allowed.status_code == 200, allowed.text
+
+
+def test_an_always_rule_pointing_backwards_is_refused_as_a_loop(client, branched):
+    rejected = client.put(
+        f"/api/questions/{branched['email']['id']}/rules",
+        json={
+            "rules": [
+                {"operator": "always", "target_question_id": branched["recommend"]["id"]}
+            ]
+        },
+    )
+    assert rejected.status_code == 400
+    assert "loop" in rejected.json()["detail"].lower()
+
+
+def test_always_replaces_the_fall_through_rather_than_racing_it(client, branched):
+    """The cycle checker must not walk an edge the always rule has removed.
+
+    Give Q1 an always rule to Q3, then point Q2 back at Q1::
+
+        Q1 ──always──▶ Q3        Q2 ──always──▶ Q1
+
+    Nothing loops: Q1 goes straight to Q3 and Q2 is simply unreachable. But if
+    the checker still believed in Q1's next-by-position edge to Q2, it would see
+    Q1 → Q2 → Q1 and refuse the second rule. Both writes must be accepted.
+    """
+    first = client.put(
+        f"/api/questions/{branched['recommend']['id']}/rules",
+        json={
+            "rules": [
+                {"operator": "always", "target_question_id": branched["email"]["id"]}
+            ]
+        },
+    )
+    assert first.status_code == 200, first.text
+
+    second = client.put(
+        f"/api/questions/{branched['fix']['id']}/rules",
+        json={
+            "rules": [
+                {"operator": "always", "target_question_id": branched["recommend"]["id"]}
+            ]
+        },
+    )
+    assert second.status_code == 200, second.text
