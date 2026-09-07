@@ -12,10 +12,12 @@ import { use, useMemo, useState } from "react";
 import { AddElementModal } from "@/components/builder/AddElementModal";
 import { FormShell } from "@/components/builder/FormShell";
 import { PreviewPane } from "@/components/builder/PreviewPane";
+import { DesignSettings } from "@/components/builder/DesignSettings";
 import { QuestionList } from "@/components/builder/QuestionList";
 import { SaveIndicator } from "@/components/builder/SaveIndicator";
 import { SettingsPanel } from "@/components/builder/SettingsPanel";
 import {
+  DESIGN,
   WELCOME,
   question as questionSelection,
   selectedQuestion,
@@ -56,7 +58,9 @@ export default function BuilderPage({
     chosen !== null &&
     (chosen.kind === "welcome"
       ? welcome !== null
-      : questions.some((q) => q.id === chosen.id));
+      : chosen.kind === "design"
+        ? true
+        : questions.some((q) => q.id === chosen.id));
   const selection = chosenIsValid ? chosen : fallback;
   const selected = selectedQuestion(selection, questions);
   const pages = questions.filter((question) => question.type !== "ending");
@@ -99,13 +103,20 @@ export default function BuilderPage({
   /** Adding a welcome screen is a form patch, not a new question row. */
   const addWelcome = () => {
     builder.patchForm({
-      welcome_screen: welcome ?? { title: "", description: "", button_text: "Start" },
+      welcome_screen: welcome ?? {
+        title: "",
+        description: "",
+        button_text: "Start",
+      },
     });
     setChosen(WELCOME);
   };
 
   return (
-    <FormShell formId={formId} headerSlot={<SaveIndicator state={builder.saveState} />}>
+    <FormShell
+      formId={formId}
+      headerSlot={<SaveIndicator state={builder.saveState} />}
+    >
       {builder.isLoading ? (
         <div className="flex-1">
           <LoadingPane label="Loading your form" />
@@ -125,6 +136,7 @@ export default function BuilderPage({
             onSelect={setChosen}
             welcome={welcome}
             onAddWelcome={addWelcome}
+            onSelectDesign={() => setChosen(DESIGN)}
             onReorder={(ids) => void reorder(ids)}
             onAddContent={() => setAddOpen(true)}
             onAddEnding={() => void addBlock("ending")}
@@ -133,27 +145,43 @@ export default function BuilderPage({
           <PreviewPane
             question={selected}
             index={badgeIndex}
-            onPatch={(patch) => selected && builder.patchQuestion(selected.id, patch)}
+            onPatch={(patch) =>
+              selected && builder.patchQuestion(selected.id, patch)
+            }
             welcome={selection.kind === "welcome" ? welcome : null}
             onWelcomePatch={(patch) =>
               builder.patchForm({ welcome_screen: { ...welcome, ...patch } })
             }
             formTitle={builder.form?.title ?? ""}
+            theme={builder.form?.theme ?? null}
           />
 
-          <SettingsPanel
-            question={selected}
-            onPatch={(patch) => selected && builder.patchQuestion(selected.id, patch)}
-            onDelete={() => void removeSelected()}
-            welcome={selection.kind === "welcome" ? welcome : null}
-            onWelcomePatch={(patch) =>
-              builder.patchForm({ welcome_screen: { ...welcome, ...patch } })
-            }
-            onWelcomeRemove={() => {
-              builder.patchForm({ welcome_screen: null });
-              setChosen(null);
-            }}
-          />
+          {selection.kind === "design" ? (
+            <DesignSettings
+              theme={builder.form?.theme ?? null}
+              onPatch={(patch) =>
+                builder.patchForm({
+                  theme: { ...(builder.form?.theme ?? {}), ...patch },
+                })
+              }
+            />
+          ) : (
+            <SettingsPanel
+              question={selected}
+              onPatch={(patch) =>
+                selected && builder.patchQuestion(selected.id, patch)
+              }
+              onDelete={() => void removeSelected()}
+              welcome={selection.kind === "welcome" ? welcome : null}
+              onWelcomePatch={(patch) =>
+                builder.patchForm({ welcome_screen: { ...welcome, ...patch } })
+              }
+              onWelcomeRemove={() => {
+                builder.patchForm({ welcome_screen: null });
+                setChosen(null);
+              }}
+            />
+          )}
 
           <AddElementModal
             open={addOpen}

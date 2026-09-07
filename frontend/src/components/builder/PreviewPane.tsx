@@ -16,8 +16,13 @@ import { EditableChoiceList } from "@/components/builder/EditableChoiceList";
 import { EndingScreen } from "@/components/flow/EndingScreen";
 import { WelcomeScreen } from "@/components/flow/WelcomeScreen";
 import { QuestionRenderer } from "@/components/render/QuestionRenderer";
+import { themeStyle } from "@/lib/formTheme";
 import { isChoiceType } from "@/lib/questionTypes";
-import type { Question, WelcomeScreen as WelcomeScreenData } from "@/types";
+import type {
+  FormTheme,
+  Question,
+  WelcomeScreen as WelcomeScreenData,
+} from "@/types";
 
 interface PreviewPaneProps {
   question: Question | null;
@@ -32,12 +37,23 @@ interface PreviewPaneProps {
   welcome?: WelcomeScreenData | null;
   onWelcomePatch?: (patch: Partial<WelcomeScreenData>) => void;
   formTitle?: string;
+  /** The form's own colours, so the preview matches what respondents get. */
+  theme?: FormTheme | null;
 }
 
-function Canvas({ children }: { children: ReactNode }) {
+function Canvas({
+  children,
+  theme,
+}: {
+  children: ReactNode;
+  theme?: FormTheme | null;
+}) {
   return (
     <div className="tf-scrollbar flex flex-1 items-center justify-center overflow-y-auto bg-canvas p-8">
-      <div className="w-full max-w-2xl rounded-xl border border-line bg-bg px-10 py-14 shadow-sm">
+      <div
+        className="w-full max-w-2xl rounded-xl border border-line bg-bg px-10 py-14 font-[family-name:var(--font-form)] shadow-sm"
+        style={themeStyle(theme)}
+      >
         {children}
       </div>
     </div>
@@ -51,10 +67,11 @@ export function PreviewPane({
   welcome,
   onWelcomePatch,
   formTitle = "",
+  theme,
 }: PreviewPaneProps) {
   if (welcome && onWelcomePatch) {
     return (
-      <Canvas>
+      <Canvas theme={theme}>
         <WelcomeScreen
           data={welcome}
           formTitle={formTitle}
@@ -77,7 +94,7 @@ export function PreviewPane({
 
   if (question.type === "ending") {
     return (
-      <Canvas>
+      <Canvas theme={theme}>
         <EndingScreen
           ending={{
             id: question.id,
@@ -93,7 +110,7 @@ export function PreviewPane({
   }
 
   return (
-    <Canvas>
+    <Canvas theme={theme}>
       <QuestionRenderer
         question={question}
         index={index}

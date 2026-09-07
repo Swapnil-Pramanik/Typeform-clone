@@ -11,9 +11,11 @@ import type { Question } from "@/types";
 
 export type Selection =
   | { kind: "welcome" }
+  | { kind: "design" }
   | { kind: "question"; id: number };
 
 export const WELCOME: Selection = { kind: "welcome" };
+export const DESIGN: Selection = { kind: "design" };
 
 export const question = (id: number): Selection => ({ kind: "question", id });
 
