@@ -106,7 +106,7 @@ Open <http://localhost:3000>. The seeded forms are live at
 ### Checks
 
 ```bash
-cd backend  && .venv/bin/python -m pytest tests   # 14 tests
+cd backend  && .venv/bin/python -m pytest tests   # 21 tests
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -209,7 +209,7 @@ drift from what a respondent sees.
 │   │   ├── conftest.py              # throwaway SQLite per test, injected via DI
 │   │   └── test_api.py              # 10 tests over the schema's invariants
 │   └── app/
-│       ├── main.py                  # FastAPI instance named `app`; CORS
+│       ├── main.py                  # build_app() factory: CORS + routers
 │       ├── config.py                # settings from the environment
 │       ├── db.py                    # engine, session dependency, FK pragma
 │       ├── seed.py                  # idempotent demo data
@@ -227,6 +227,7 @@ drift from what a respondent sees.
 │       │   └── validation.py        # validate_answer — the canonical rules
 │       └── routers/
 │           ├── deps.py              # session dependency + error translation
+│           ├── meta.py              # /  and /api/health (with a db probe)
 │           ├── forms.py             # /api/forms/*      authoring
 │           ├── questions.py         # /api/questions/*  authoring
 │           ├── responses.py         # /api/responses/*  authoring
@@ -786,7 +787,7 @@ entirely — that origin would then be allowed to call this API from a browser.
 
 `backend/tests/test_api.py` runs the API end to end against a throwaway SQLite
 file, injected through the `get_db` dependency and configured with
-`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Fourteen tests, each covering one
+`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Twenty-one tests, each covering one
 invariant the design rests on rather than one function:
 
 | Test | Invariant |
@@ -805,6 +806,8 @@ invariant the design rests on rather than one function:
 | `test_requirements_matches_pyproject_dependencies` | The two dependency lists cannot drift apart. |
 | `test_libsql_driver_is_a_hard_dependency` | The Turso driver stays a hard dependency, not an optional extra. |
 | `test_settings_tolerate_pasted_whitespace_and_quotes` | Env vars survive being pasted into a deployment dashboard. |
+| `test_our_own_origins_are_allowed` | Production, preview and localhost origins all pass CORS. |
+| `test_unrelated_origins_are_blocked` | An identically-named deployment owned by someone else does not. |
 
 The frontend is covered by `tsc --noEmit`, ESLint (including the React hooks
 rules) and a production build, all clean.
