@@ -718,6 +718,20 @@ shows responses against a plan allowance; there is no plan and no allowance
 here, so a bar filling towards an invented ceiling would be fiction. The count
 alone is the true statement.
 
+### Fidelity notes for the builder
+
+Matched against a screenshot of the live design page: a **breadcrumb** back to
+the workspace, the five nav tabs (**Workflow** included, marked Coming Soon), and
+the Publish / link / View plans / help / avatar cluster on the right. Beneath
+that a **toolbar strip** — Add content, Design, then the inspection tools the
+real product keeps there. The rail groups are **cards on the grey ground**, and
+the settings panel is a **flat list of labelled rows** with the control on the
+right, not a stack of captioned uppercase sections. Text fields that the real
+panel counts — the button label — carry the same `5/24` counter.
+
+The `Question: Text / Video` toggle from the older layout is gone: the current
+panel has no such control, and the row list reads better without it.
+
 ### Fidelity notes for the respondent flow
 
 Details verified against the live product and reproduced here: the numbered badge
