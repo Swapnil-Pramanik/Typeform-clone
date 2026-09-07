@@ -8,7 +8,7 @@ conversational flow.
 - **Backend** — FastAPI, SQLAlchemy 2, Alembic, Pydantic v2
 - **Database** — SQLite locally, hosted libSQL (Turso) in production — one `DATABASE_URL` switches between them
 
-> **Live demo:** <https://typeform-clone-frontend-pramanikswapnil9-1372s-projects.vercel.app>
+> **Live demo:** <https://typeform-clone-frontend-drab.vercel.app>
 > — API at <https://typeform-clone-pramanikswapnil9-1372s-projects.vercel.app>
 > (`/docs` for the OpenAPI browser). Frontend and API both run in Vercel's `bom1`
 > region alongside the Turso database in Mumbai.
@@ -774,6 +774,12 @@ deployment, an explicit list goes stale as soon as you push again — set
 CORS_ORIGINS       https://<frontend>.vercel.app,http://localhost:3000
 CORS_ORIGIN_REGEX  https://typeform-clone-frontend-.*-<your-scope>\.vercel\.app
 ```
+
+Vercel gives a project three kinds of hostname: a short random-word alias
+(`typeform-clone-frontend-drab.vercel.app`), an account-scoped alias, and a URL
+per deployment. **The short alias has no account suffix**, so a regex anchored on
+the scope silently misses the very hostname you hand people — list it explicitly
+in `CORS_ORIGINS`.
 
 Anchor the regex on the **account-scoped** suffix, not just the project name.
 `*.vercel.app` hostnames are global, so a pattern like

@@ -15,8 +15,15 @@ from app.main import build_app
 SCOPE = "pramanikswapnil9-1372s-projects"
 REGEX = rf"https://typeform-clone-frontend.*-{SCOPE}\.vercel\.app"
 
+#: Vercel gives a project three kinds of hostname: a short random-word alias, an
+#: account-scoped alias, and a per-deployment URL. The short alias carries no
+#: account suffix, so a regex anchored on the scope misses it — it has to be
+#: listed explicitly, and forgetting it blocks the app that people actually use.
+SHORT_ALIAS = "https://typeform-clone-frontend-drab.vercel.app"
+
 ALLOWED = [
-    f"https://typeform-clone-frontend-{SCOPE}.vercel.app",           # production
+    SHORT_ALIAS,                                                      # what we hand out
+    f"https://typeform-clone-frontend-{SCOPE}.vercel.app",            # account-scoped
     f"https://typeform-clone-frontend-nxzusc65d-{SCOPE}.vercel.app",  # a preview
     "http://localhost:3000",                                          # local dev
 ]
@@ -30,7 +37,7 @@ BLOCKED = [
 @pytest.fixture
 def client() -> TestClient:
     settings = Settings(
-        cors_origins="http://localhost:3000",
+        cors_origins=f"{SHORT_ALIAS},http://localhost:3000",
         cors_origin_regex=REGEX,
     )
     return TestClient(build_app(settings))
