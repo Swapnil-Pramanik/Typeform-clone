@@ -167,7 +167,9 @@ function LogicBody({
         </p>
       </header>
 
-      <div className="flex max-h-[56vh] gap-4 bg-canvas px-6 pb-5">
+      {/* A fixed height, not a max: collapsing a section must not make the
+          dialog jump around under the pointer that just collapsed it. */}
+      <div className="flex h-[56vh] gap-4 bg-canvas px-6 pb-5">
         <nav className="tf-scrollbar w-[220px] shrink-0 overflow-y-auto">
           <ul className="flex flex-col gap-0.5">
             {editable.map((question, index) => (
