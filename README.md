@@ -57,6 +57,7 @@ conversational flow.
 | | Completion rate from partial responses | Built |
 | | CSV export (streaming) | Built |
 | **Dashboard** | List/grid views, search, sort, row menu, delete confirmation | Built |
+| | Row thumbnails tinted by each form's own theme colour | Built |
 | | Dark mode | Built |
 | **Coming Soon** | Logic jumps, integrations, workflow, embed, team features | Placeheld |
 
@@ -335,7 +336,8 @@ drift from what a respondent sees.
 | `components/flow/FormFlow.tsx` | Presentation and network only. Also sends the drop-out beacon. |
 | `components/builder/useBuilder.ts` | Optimistic cache write + debounced flush; merges `settings` before sending, because the server replaces the whole JSON column. |
 | `components/builder/PreviewPane.tsx` | Mounts `QuestionRenderer` with the editing callbacks. |
-| `components/dashboard/RowMenu.tsx` | The row menu from the brief, verbatim, Delete red and below a separator. |
+| `components/dashboard/RowMenu.tsx` | The row menu from the brief, verbatim, grouped as the real product groups it and Delete red below a separator. |
+| `components/dashboard/FormThumbnail.tsx` | The row's colour block. The real product renders a miniature of the form; a solid block of its theme colour is the honest reduction. |
 | `components/results/SummaryPanel.tsx` | Draws bars. Every number arrives pre-computed; the client does no aggregation. |
 
 ---
@@ -658,6 +660,12 @@ collapsible **Private** group, and, pinned to the bottom, the response meter wit
 its "Increase response limit" button and the Ask Typeform AI composer. The
 workspace header is the title plus `⋯`, Invite and the plan gem, with the sort
 control and a labelled List/Grid segmented toggle pushed right.
+
+The list is **stacked cards, not a bordered table** — each row a white card with
+an 8px gap, headed by a thumbnail tinted with the form's own theme colour.
+Completed is a **percentage of responses** rather than a count, Updated is an
+absolute date, and a form with no responses shows `–` in both columns rather
+than a zero.
 
 Chrome that the real product has and this build does not implement — Integrations,
 Brand kit, View plans, Research Flow, Invite, the AI composer, Increase response
