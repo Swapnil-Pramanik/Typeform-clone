@@ -75,9 +75,13 @@ Two processes: the API on `:8000`, the web app on `:3000`.
 
 ### Backend
 
+> **Python 3.12 or 3.13 — not 3.14.** The libSQL driver used against Turso
+> segfaults on connect under CPython 3.14, and Vercel's runtime is 3.12, so the
+> local environment matches it.
+
 ```bash
 cd backend
-uv venv && uv pip install -e .          # or: python -m venv .venv && .venv/bin/pip install -e .
+uv venv --python 3.12 && uv pip install -e ".[libsql]"
 cp .env.example .env                    # DATABASE_URL=sqlite:///./typeform.db
 .venv/bin/alembic upgrade head          # create the schema
 .venv/bin/python -m app.seed            # idempotent demo data
@@ -716,9 +720,21 @@ just a different `DATABASE_URL`:
 
 ```bash
 cd backend
-DATABASE_URL='sqlite+libsql://<db>.turso.io?authToken=<token>&secure=true' .venv/bin/alembic upgrade head
-DATABASE_URL='sqlite+libsql://<db>.turso.io?authToken=<token>&secure=true' .venv/bin/python -m app.seed
+# Keep the production URL in .env.production (gitignored) so local dev's .env
+# keeps pointing at the local file and can't be written to by accident.
+set -a && . ./.env.production && set +a
+.venv/bin/alembic upgrade head
+.venv/bin/python -m app.seed
 ```
+
+**Two gotchas worth knowing**, both hit during the real deployment:
+
+* The dashboard hands you a `libsql://` URL; SQLAlchemy needs **`sqlite+libsql://`**.
+* `sqlalchemy-libsql` folds the URL's query string into the URI it passes the
+  driver, but the driver only reads the credential from an `auth_token` keyword
+  argument — so a token left in the URL is rejected as an *"empty JWT token"*.
+  `db.py` lifts it out of the URL and passes it explicitly; nothing else in the
+  app has to know.
 
 Set `CORS_ORIGINS` on the backend project to the deployed frontend origin plus
 `http://localhost:3000`.

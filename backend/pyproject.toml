@@ -2,7 +2,9 @@
 name = "typeform-clone-api"
 version = "1.0.0"
 description = "FastAPI backend for a Typeform clone: form authoring, publishing and public response collection."
-requires-python = ">=3.11"
+# Upper bound is real: the libSQL driver used against Turso segfaults on
+# import/connect under CPython 3.14. Vercel's Python runtime is 3.12.
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -14,6 +16,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Needed whenever DATABASE_URL points at Turso — including when running the
+# migration or the seed against production from a workstation.
 libsql = ["sqlalchemy-libsql>=0.1.0"]
 
 [tool.vercel]
