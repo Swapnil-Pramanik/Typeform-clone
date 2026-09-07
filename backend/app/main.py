@@ -39,6 +39,21 @@ app.include_router(responses_router)
 app.include_router(public_router)
 
 
+@app.get("/", tags=["meta"], include_in_schema=False)
+def root() -> dict[str, str]:
+    """Something friendlier than a bare 404 for anyone who opens the base URL.
+
+    It also makes a routing misconfiguration obvious: if the deployment rewrites
+    paths instead of passing them through, every request lands here rather than
+    on the endpoint that was asked for.
+    """
+    return {
+        "service": "Typeform Clone API",
+        "docs": "/docs",
+        "health": "/api/health",
+    }
+
+
 @app.get("/api/health", tags=["meta"])
 def health() -> dict[str, str]:
     return {"status": "ok"}

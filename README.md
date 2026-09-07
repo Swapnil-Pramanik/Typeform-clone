@@ -197,7 +197,7 @@ drift from what a respondent sees.
 ├── backend/
 │   ├── pyproject.toml               # deps and the supported Python range
 │   ├── requirements.txt             # what Vercel's Python runtime installs
-│   ├── vercel.json                  # rewrites every path to api/index.py; pins bom1
+│   ├── vercel.json                  # routes every path to api/index.py; pins bom1
 │   ├── alembic.ini
 │   ├── alembic/
 │   │   ├── env.py                   # URL from settings; JSONText → sa.Text()
@@ -703,7 +703,7 @@ key surface is exactly zero.
 | Piece | Where | Notes |
 |---|---|---|
 | Next.js frontend | Vercel | Set `NEXT_PUBLIC_API_URL` to the deployed API origin. |
-| FastAPI backend | Vercel, second project, root `backend/` | `vercel.json` rewrites every path to `api/index.py`, the serverless entrypoint that re-exports the ASGI app. |
+| FastAPI backend | Vercel, second project, root `backend/` | `vercel.json` **routes** every path to `api/index.py`, the serverless entrypoint that re-exports the ASGI app. |
 | Database | Turso (hosted libSQL), AWS AP South (Mumbai) | SQLite over the wire. Data survives redeploys. |
 
 **Both Vercel projects are pinned to `bom1` (Mumbai)** in their `vercel.json`,
@@ -753,6 +753,10 @@ set -a && . ./.env.production && set +a
 * Vercel loads the serverless entrypoint **by file path**, putting that file's own
   directory on `sys.path` rather than the backend root, so `import app.*` fails.
   `api/index.py` prepends the root before importing anything.
+* Route with `routes`/`dest`, not `rewrites`/`destination`. A rewrite *replaces*
+  the path before the function sees it, so every request arrives at the ASGI app
+  as `/api/index` and FastAPI answers `{"detail":"Not Found"}` for the whole API
+  while looking perfectly healthy. `routes` passes the original path through.
 
 Set `CORS_ORIGINS` on the backend project to the deployed frontend origin plus
 `http://localhost:3000`.
