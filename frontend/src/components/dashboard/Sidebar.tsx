@@ -35,7 +35,7 @@ export function Sidebar({
   const used = Math.min(responsesCollected / RESPONSE_LIMIT, 1);
 
   return (
-    <aside className="tf-scrollbar flex w-[256px] shrink-0 flex-col overflow-y-auto border-r border-line bg-rail">
+    <aside className="tf-scrollbar flex w-[256px] shrink-0 flex-col overflow-y-auto border-r-2 border-groove bg-rail">
       <div className="p-3">
         <button
           type="button"
@@ -48,7 +48,7 @@ export function Sidebar({
         </button>
       </div>
 
-      <div className="border-y border-line px-4 py-3.5">
+      <div className="border-y-2 border-groove px-4 py-3.5">
         <label className="flex items-center gap-2.5">
           <Search width={18} height={18} className="shrink-0 text-ink-muted" />
           <input
@@ -104,7 +104,7 @@ export function Sidebar({
       </div>
 
       <div className="mt-auto">
-        <div className="border-t border-line px-4 py-4">
+        <div className="border-t-2 border-groove px-4 py-4">
           <p className="text-[15px] text-ink">Responses collected</p>
           <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-line-strong">
             <div
@@ -127,7 +127,7 @@ export function Sidebar({
           </button>
         </div>
 
-        <div className="border-t border-line p-3">
+        <div className="border-t-2 border-groove p-3">
           <div className="rounded-xl p-[3px] ring-1 ring-ai-ring-soft">
             <div className="flex items-center gap-2 rounded-lg border border-ai-ring bg-panel px-3 py-2">
               <Mic width={17} height={17} className="shrink-0 text-ink-muted" />

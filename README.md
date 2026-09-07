@@ -593,7 +593,7 @@ is one attribute on `<html>`.
 |---|---|
 | Surfaces | `--tf-bg` (white: the flow, cards), `--tf-canvas` (chrome ground), `--tf-panel` (raised), `--tf-rail` (sidebars), `--tf-overlay` |
 | Text | `--tf-ink`, `--tf-ink-strong`, `--tf-ink-muted`, `--tf-ink-faint` |
-| Lines | `--tf-line`, `--tf-line-strong` |
+| Lines | `--tf-line`, `--tf-line-strong`, `--tf-groove` (the white gap between shell panels) |
 | Chrome states | `--tf-muted` (hover), `--tf-muted-strong` (selected) |
 | Accents | `--tf-accent`, `--tf-accent-ink`, `--tf-focus`, `--tf-danger`, `--tf-success` |
 | Brand green | `--tf-brand`, `--tf-brand-ink`, `--tf-brand-soft`, `--tf-brand-line` |
@@ -623,6 +623,15 @@ Notes worth stating:
   free, and no icon package for two dozen glyphs.
 
 ### Fidelity notes for the dashboard
+
+The workspace is not a flat, full-bleed layout. The **account bar sits directly
+on the white page**, and everything below it lives in a **rounded shell inset
+~16px from the window edges** (`rounded-[10px]`, on the `#f7f7f8` ground). Inside
+that shell, panels are divided by **2px white grooves** rather than grey rules —
+the sidebar's right edge, the tabs row's bottom edge and the sidebar's own
+section breaks all read as gaps cut through the grey, which is why they get their
+own `--tf-groove` token. Rules *inside* content (the workspace header's underline)
+stay grey.
 
 Matched against a screenshot of the live product: a **full-width account bar**
 (workspace chip, handle, Integrations, Brand kit, View plans, help, avatar), a

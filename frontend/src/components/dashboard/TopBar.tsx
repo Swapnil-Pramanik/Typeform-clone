@@ -15,7 +15,7 @@ import { CREATOR } from "@/lib/creator";
 
 export function TopBar() {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-panel px-4">
+    <header className="flex h-14 shrink-0 items-center gap-3 bg-bg px-4">
       <button
         type="button"
         title="Coming soon"

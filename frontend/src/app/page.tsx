@@ -45,7 +45,12 @@ export default function DashboardPage() {
   const [sort, setSort] = useState<SortKey>("updated");
   const [pendingDelete, setPendingDelete] = useState<FormSummary | null>(null);
 
-  const { data: forms, isLoading, error, refetch } = useForms(search || undefined);
+  const {
+    data: forms,
+    isLoading,
+    error,
+    refetch,
+  } = useForms(search || undefined);
   const actions = useFormActions();
 
   /**
@@ -63,7 +68,8 @@ export default function DashboardPage() {
 
   const sorted = useMemo(() => {
     const list = [...(forms ?? [])];
-    if (sort === "name") return list.sort((a, b) => a.title.localeCompare(b.title));
+    if (sort === "name")
+      return list.sort((a, b) => a.title.localeCompare(b.title));
     if (sort === "responses")
       return list.sort((a, b) => b.response_count - a.response_count);
     if (sort === "created")
@@ -86,7 +92,9 @@ export default function DashboardPage() {
         toast.show("Publish the form first to get a link.", "error");
         return;
       }
-      await navigator.clipboard.writeText(`${window.location.origin}/f/${form.slug}`);
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/f/${form.slug}`,
+      );
       toast.show("Link copied", "success");
     });
 
@@ -113,76 +121,88 @@ export default function DashboardPage() {
     });
 
   return (
-    <div className="flex h-dvh flex-col bg-canvas">
+    /*
+     * The account bar sits directly on the page; everything below it lives in a
+     * rounded shell inset from the window edges, which is how the real product
+     * frames the workspace. The shell clips its own corners, so the sidebar and
+     * the tabs row can run edge to edge inside it.
+     */
+    <div className="flex h-dvh flex-col bg-bg">
       <TopBar />
-      <WorkspaceTabs active={tab} onSelect={setTab} />
 
-      <div className="flex min-h-0 flex-1">
-        <Sidebar
-          search={search}
-          onSearch={setSearch}
-          onCreate={() => void create()}
-          creating={actions.create.isPending}
-          responsesCollected={responsesCollected}
-          formCount={forms?.length ?? 0}
-        />
+      <div className="mx-4 mb-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[10px] bg-canvas">
+        <WorkspaceTabs active={tab} onSelect={setTab} />
 
-        <main className="tf-scrollbar flex min-w-0 flex-1 flex-col overflow-y-auto">
-          {tab !== "Forms" ? (
-            <div className="p-10">
-              <ComingSoon
-                title={tab}
-                description={`${tab} is part of the real product's workspace nav. It is a placement in this build, not a feature.`}
-              />
-            </div>
-          ) : (
-            <>
-              <WorkspaceHeader
-                title="My workspace"
-                sort={sort}
-                onSort={setSort}
-                layout={layout}
-                onLayout={setLayout}
-              />
+        <div className="flex min-h-0 flex-1">
+          <Sidebar
+            search={search}
+            onSearch={setSearch}
+            onCreate={() => void create()}
+            creating={actions.create.isPending}
+            responsesCollected={responsesCollected}
+            formCount={forms?.length ?? 0}
+          />
 
-              {isLoading ? (
-                <LoadingPane label="Loading your forms" />
-              ) : error ? (
-                <div className="p-6">
-                  <EmptyState
-                    title="Couldn’t load your forms"
-                    description={errorMessage(error)}
-                    action={
-                      <Button variant="secondary" onClick={() => void refetch()}>
-                        Try again
-                      </Button>
-                    }
-                  />
-                </div>
-              ) : sorted.length === 0 && search ? (
-                <div className="p-6">
-                  <EmptyState
-                    title="No forms match that search"
-                    description="Try a different name."
-                  />
-                </div>
-              ) : sorted.length === 0 ? (
-                <EmptyWorkspace onCreate={() => void create()} />
-              ) : (
-                <div className="p-6">
-                  <FormTable
-                    forms={sorted}
-                    layout={layout}
-                    onCopyLink={(form) => void copyLink(form)}
-                    onRename={(form) => void rename(form)}
-                    onDuplicate={(form) => void duplicate(form)}
-                    onDelete={setPendingDelete}
-                  />
-                </div>
-              )}
-            </>
-          )}
-        </main>
+          <main className="tf-scrollbar flex min-w-0 flex-1 flex-col overflow-y-auto">
+            {tab !== "Forms" ? (
+              <div className="p-10">
+                <ComingSoon
+                  title={tab}
+                  description={`${tab} is part of the real product's workspace nav. It is a placement in this build, not a feature.`}
+                />
+              </div>
+            ) : (
+              <>
+                <WorkspaceHeader
+                  title="My workspace"
+                  sort={sort}
+                  onSort={setSort}
+                  layout={layout}
+                  onLayout={setLayout}
+                />
+
+                {isLoading ? (
+                  <LoadingPane label="Loading your forms" />
+                ) : error ? (
+                  <div className="p-6">
+                    <EmptyState
+                      title="Couldn’t load your forms"
+                      description={errorMessage(error)}
+                      action={
+                        <Button
+                          variant="secondary"
+                          onClick={() => void refetch()}
+                        >
+                          Try again
+                        </Button>
+                      }
+                    />
+                  </div>
+                ) : sorted.length === 0 && search ? (
+                  <div className="p-6">
+                    <EmptyState
+                      title="No forms match that search"
+                      description="Try a different name."
+                    />
+                  </div>
+                ) : sorted.length === 0 ? (
+                  <EmptyWorkspace onCreate={() => void create()} />
+                ) : (
+                  <div className="p-6">
+                    <FormTable
+                      forms={sorted}
+                      layout={layout}
+                      onCopyLink={(form) => void copyLink(form)}
+                      onRename={(form) => void rename(form)}
+                      onDuplicate={(form) => void duplicate(form)}
+                      onDelete={setPendingDelete}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+        </div>
       </div>
 
       <Modal
@@ -192,8 +212,9 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col gap-4 px-5 py-4">
           <p className="text-sm text-ink-muted">
-            “{pendingDelete?.title}” and its {pendingDelete?.response_count ?? 0}{" "}
-            response{pendingDelete?.response_count === 1 ? "" : "s"} will be deleted.
+            “{pendingDelete?.title}” and its{" "}
+            {pendingDelete?.response_count ?? 0} response
+            {pendingDelete?.response_count === 1 ? "" : "s"} will be deleted.
             This cannot be undone.
           </p>
           <div className="flex justify-end gap-2">

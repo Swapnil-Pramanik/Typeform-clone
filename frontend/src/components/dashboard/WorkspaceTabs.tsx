@@ -27,7 +27,7 @@ interface WorkspaceTabsProps {
 
 export function WorkspaceTabs({ active, onSelect }: WorkspaceTabsProps) {
   return (
-    <nav className="flex h-14 shrink-0 items-center gap-1 border-b border-line bg-canvas px-4">
+    <nav className="flex h-14 shrink-0 items-center gap-1 border-b-2 border-groove bg-canvas px-4">
       {WORKSPACE_TABS.map((tab) => {
         const Icon = tab.icon;
         const isActive = tab.name === active;
