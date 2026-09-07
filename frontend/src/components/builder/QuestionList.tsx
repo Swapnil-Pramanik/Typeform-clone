@@ -80,7 +80,7 @@ export function QuestionList({
   };
 
   return (
-    <aside className="tf-scrollbar flex w-[268px] shrink-0 flex-col gap-5 overflow-y-auto border-r border-line bg-rail p-3">
+    <aside className="tf-scrollbar flex w-[268px] shrink-0 flex-col gap-5 overflow-y-auto border-r-2 border-groove bg-rail p-3">
       <Group
         label="Pages"
         count={pages.length}

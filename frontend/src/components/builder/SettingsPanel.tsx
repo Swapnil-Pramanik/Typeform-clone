@@ -32,13 +32,13 @@ const RATING_SCALES = [3, 4, 5, 7, 10];
 
 export function SettingsPanel({ question, onPatch, onDelete }: SettingsPanelProps) {
   if (!question) {
-    return <aside className="w-[300px] shrink-0 border-l border-line bg-panel" />;
+    return <aside className="w-[300px] shrink-0 border-l-2 border-groove bg-panel" />;
   }
 
   const isEnding = question.type === "ending";
 
   return (
-    <aside className="tf-scrollbar flex w-[300px] shrink-0 flex-col overflow-y-auto border-l border-line bg-panel">
+    <aside className="tf-scrollbar flex w-[300px] shrink-0 flex-col overflow-y-auto border-l-2 border-groove bg-panel">
       <div className="flex-1">
         {!isEnding && (
           <>

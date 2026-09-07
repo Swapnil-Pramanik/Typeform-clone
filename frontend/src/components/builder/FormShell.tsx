@@ -56,8 +56,13 @@ export function FormShell({ formId, headerSlot, children }: FormShellProps) {
   };
 
   return (
+    /*
+     * Same frame as the dashboard: the bar sits on the page and the working area
+     * below it is an inset rounded shell. The two screens are one product, so
+     * they cannot disagree about their own chrome.
+     */
     <div className="flex h-dvh flex-col bg-bg">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-3">
+      <header className="flex h-14 shrink-0 items-center gap-3 px-4">
         <Link
           href="/"
           className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[13px] font-medium text-ink-muted hover:bg-muted hover:text-ink"
@@ -80,7 +85,7 @@ export function FormShell({ formId, headerSlot, children }: FormShellProps) {
                 href={href}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
-                  active ? "bg-muted-strong text-ink" : "text-ink-muted hover:bg-muted",
+                  active ? "bg-muted-strong text-ink-strong" : "text-ink-muted hover:bg-muted",
                 )}
               >
                 {tab.label}
@@ -113,7 +118,9 @@ export function FormShell({ formId, headerSlot, children }: FormShellProps) {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">{children}</div>
+      <div className="mx-4 mb-4 flex min-h-0 flex-1 overflow-hidden rounded-[14px] bg-canvas">
+        {children}
+      </div>
     </div>
   );
 }
