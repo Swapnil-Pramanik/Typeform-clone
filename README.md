@@ -48,7 +48,7 @@ conversational flow.
 | **Publishing** | Publish / unpublish; slug minted once and kept forever | Built |
 | | Public fill page needing no account | Built |
 | **Respondent flow** | One question at a time, directional enter/exit transitions | Built |
-| | Keyboard-only completion: Enter, A–Z, 1–9, Y/N | Built |
+| | Keyboard-only completion: Enter, arrows, A–Z, 1–9, Y/N | Built |
 | | Inline client validation, re-validated server-side | Built |
 | | Optional welcome screen; endings rendered from data | Built |
 | | `prefers-reduced-motion` honoured | Built |

@@ -77,14 +77,29 @@ export function FormFlow({ form }: { form: PublicForm }) {
     if (ok && flow.isLast) void submit();
   }, [flow, submit]);
 
-  // Enter advances from anywhere, including the choice and rating screens where
-  // there is no text field to catch the key.
+  /**
+   * Enter advances from anywhere, including the choice and rating screens where
+   * there is no text field to catch the key. The arrows step the flow the way
+   * the corner chevrons do — down or right forward, up or left back — so the
+   * whole form is navigable without ever reaching for the mouse.
+   */
   useHotkeys(
     (event) => {
       if (flow.phase !== "question") return;
+
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         onAdvance();
+        return;
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+        event.preventDefault();
+        onAdvance();
+        return;
+      }
+      if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+        event.preventDefault();
+        flow.goBack();
       }
     },
     flow.phase === "question",

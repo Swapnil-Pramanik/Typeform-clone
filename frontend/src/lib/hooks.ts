@@ -4,13 +4,23 @@
 
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
+//: Vertical arrows mean "previous/next step" in the flow, and nothing to a
+//: single-line field — so they are the one kind of key allowed to escape one.
+const VERTICAL_ARROWS = new Set(["ArrowUp", "ArrowDown"]);
+
 /**
  * Window-level key handling for the respondent flow.
  *
- * Keystrokes aimed at a focused field are ignored entirely. A letter shortcut
- * must never steal a character from a text answer, and Enter must not advance
- * twice — the text inputs already handle their own Enter, so a window-level
- * handler firing as well would skip a question.
+ * Keystrokes aimed at a focused field are ignored. A letter shortcut must never
+ * steal a character from a text answer, and Enter must not advance twice — the
+ * text inputs handle their own Enter, so a window-level handler firing as well
+ * would skip a question.
+ *
+ * Vertical arrows are the exception: they carry no meaning inside a single-line
+ * input, so they are allowed through to drive step navigation. A textarea keeps
+ * them for moving the caret, and anything a component already handled — the
+ * dropdown's own list navigation — arrives with `defaultPrevented` set and is
+ * left alone.
  */
 export function useHotkeys(
   handler: (event: KeyboardEvent) => void,
@@ -27,11 +37,18 @@ export function useHotkeys(
     if (!enabled) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName;
       const typing =
         tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable === true;
-      if (typing) return;
+
+      if (typing) {
+        const escapes = VERTICAL_ARROWS.has(event.key) && tag === "INPUT";
+        if (!escapes) return;
+      }
+
       latest.current(event);
     };
 
