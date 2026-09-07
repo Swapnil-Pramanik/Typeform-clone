@@ -273,14 +273,18 @@ drift from what a respondent sees.
         │   │   ├── useBuilder.ts             # editing model + autosave
         │   │   ├── FormShell.tsx             # Content · Connect · Share · Results
         │   │   ├── QuestionList.tsx          # left rail, dnd-kit
+        │   │   ├── selection.ts              # welcome | design | question
         │   │   ├── PreviewPane.tsx           # centre, editable in place
         │   │   ├── EditableChoiceList.tsx
-        │   │   ├── SettingsPanel.tsx         # right panel
+        │   │   ├── SettingsPanel.tsx         # right panel, per block
+        │   │   ├── DesignSettings.tsx        # right panel, per form: colour/bg/font
         │   │   ├── AddElementModal.tsx
         │   │   ├── SaveIndicator.tsx
         │   │   └── Toggle.tsx
         │   ├── dashboard/
+        │   │   ├── TopBar.tsx  WorkspaceTabs.tsx  WorkspaceHeader.tsx
         │   │   ├── Sidebar.tsx  FormTable.tsx  RowMenu.tsx
+        │   │   ├── FormThumbnail.tsx  EmptyWorkspace.tsx  ComingSoonButton.tsx
         │   ├── results/
         │   │   ├── ResponsesTable.tsx  ResponseDetail.tsx  SummaryPanel.tsx
         │   └── ui/
@@ -292,6 +296,9 @@ drift from what a respondent sees.
         │   ├── validation.ts                 # mirror of services/validation.py
         │   ├── queries.ts                    # TanStack hooks + query keys
         │   ├── questionTypes.tsx             # block catalogue + groups
+        │   ├── formTheme.ts                  # a form's theme as token overrides
+        │   ├── creator.ts                    # the single seeded creator
+        │   ├── errors.ts                     # one place that names a failure
         │   ├── hooks.ts                      # hotkeys, debounce, media queries
         │   ├── theme.ts                      # light/dark external store
         │   └── format.ts                     # dates, percentages, cn()
