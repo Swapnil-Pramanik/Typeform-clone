@@ -22,6 +22,7 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import { Modal } from "@/components/ui/Modal";
 import { Gem, Layers, Lock } from "@/components/ui/icons";
 import { cn } from "@/lib/format";
+import { FORM_MODES, UNIVERSAL, modeLabel } from "@/lib/formModes";
 import { DEFAULT_FORM_SETTINGS, type Form, type FormSettings } from "@/types";
 
 type Tab = "general" | "access" | "language";
@@ -30,13 +31,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "general", label: "General" },
   { id: "access", label: "Access & Scheduling" },
   { id: "language", label: "Language" },
-];
-
-const MODES = [
-  { value: "universal", label: "Universal", hint: "Create any type of form." },
-  { value: "lead", label: "Lead qualification", hint: "Score and prioritise your leads." },
-  { value: "quiz", label: "Knowledge quiz", hint: "Score answers and give feedback." },
-  { value: "match", label: "Match quiz", hint: "Send people to different endings." },
 ];
 
 /** The switches that genuinely change what a respondent sees. */
@@ -241,11 +235,11 @@ function GeneralTab({
         <p className="mb-1.5 text-[14px] text-ink">Choose a mode</p>
         <Dropdown
           label="Form mode"
-          value="universal"
+          value={UNIVERSAL}
           onChange={(mode) => {
-            if (mode !== "universal") comingSoon(MODES.find((m) => m.value === mode)!.label);
+            if (mode !== UNIVERSAL) comingSoon(modeLabel(mode));
           }}
-          options={MODES.map((mode) => ({
+          options={FORM_MODES.map((mode) => ({
             value: mode.value,
             label: mode.label,
             icon: <Layers width={15} height={15} />,

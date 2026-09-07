@@ -314,6 +314,7 @@ drift from what a respondent sees.
         │   ├── queries.ts                    # TanStack hooks + query keys
         │   ├── questionTypes.tsx             # block catalogue + groups
         │   ├── formTheme.ts                  # a form's theme as token overrides
+        │   ├── formModes.ts                  # the four form modes, named once
         │   ├── logic.ts                      # mirror of services/logic.py
         │   ├── creator.ts                    # the single seeded creator
         │   ├── errors.ts                     # one place that names a failure
@@ -977,12 +978,12 @@ product puts the feature:
 | Placement | What is stubbed |
 |---|---|
 | Builder → *Connect* tab | Webhooks, Google Sheets, Slack, Zapier, HubSpot, Airtable |
+| Toolbar → mode pill, Form settings → *Form mode* | Lead qualification, Knowledge quiz and Match quiz. Only Universal is modelled. |
 | Settings panel → *Comments* | Per-block comments. (*Logic* is real — see assumption 11.) |
 | Logic dialog → *Question display*, *Hide answer choices* | Showing or hiding a block, or individual choices, from a condition |
 | Logic dialog → *Calculations* | Scores and variables accumulated across answers |
 | Form settings → *Access & Scheduling* | Scheduling a close date, a response limit, and a password. Open/closed is real. |
 | Form settings → *Language*, *Block references* | Respondent-facing translations; piping earlier answers into later questions |
-| Form settings → *Form mode* | Only *Universal* is modelled; Score and Quiz describe behaviour this engine does not have |
 | Settings panel toggles | Randomize, "Other", "None", Vertical alignment — present but inert |
 | Add-element modal | Picture Choice, NPS, Ranking, Matrix, Date, Signature, Payment, File Upload, Scheduler, Statement, Question Group, Redirect, Welcome Screen — shown greyed out in their real groups |
 | Add-element modal tabs | *Import questions*, *Create with AI* |

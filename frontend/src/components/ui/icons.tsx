@@ -243,14 +243,22 @@ export const Device = (p: IconProps) => (
 export const Play = (p: IconProps) => (
   <Icon {...p}><path d="M7 4.5 19 12 7 19.5Z" /></Icon>
 );
+// The figure sits inside a ring, as the real toolbar draws it — a bare figure
+// at this size reads as a person, not as an accessibility check.
 export const Accessibility = (p: IconProps) => (
   <Icon {...p}>
-    <circle cx="12" cy="4.2" r="1.6" />
-    <path d="M4.5 8.2h15M12 8.5v5m0 0-3 7m3-7 3 7" />
+    <circle cx="12" cy="12" r="9.2" />
+    <circle cx="12" cy="7.6" r="1.1" />
+    <path d="M7.8 10.2h8.4M12 10.4v3.4m0 0-2 4.2m2-4.2 2 4.2" />
   </Icon>
 );
+/** Undo and redo, so the arrow curls back on itself and trails its history. */
 export const Undo = (p: IconProps) => (
-  <Icon {...p}><path d="M4 9h10a5 5 0 0 1 0 10H9" /><path d="m8 5-4 4 4 4" /></Icon>
+  <Icon {...p}>
+    <path d="M13.5 19a7 7 0 1 0-6.8-8.7" />
+    <path d="m3.6 6.2.7 4.6 4.6-.7" />
+    <path d="M17.8 19.6h.01M20.6 17.4h.01M21.8 14h.01" />
+  </Icon>
 );
 export const Translate = (p: IconProps) => (
   <Icon {...p}>
