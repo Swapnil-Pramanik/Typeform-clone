@@ -25,12 +25,14 @@ import { cn } from "@/lib/format";
 interface BuilderToolbarProps {
   onAddContent: () => void;
   onOpenDesign: () => void;
+  onOpenSettings: () => void;
   designActive: boolean;
 }
 
 export function BuilderToolbar({
   onAddContent,
   onOpenDesign,
+  onOpenSettings,
   designActive,
 }: BuilderToolbarProps) {
   const comingSoon = useComingSoon();
@@ -41,7 +43,6 @@ export function BuilderToolbar({
     { icon: Accessibility, label: "Accessibility check" },
     { icon: Undo, label: "Undo and redo" },
     { icon: Translate, label: "Translations" },
-    { icon: Settings, label: "Form settings" },
   ];
 
   return (
@@ -79,6 +80,16 @@ export function BuilderToolbar({
           <Icon width={17} height={17} />
         </button>
       ))}
+
+      <button
+        type="button"
+        onClick={onOpenSettings}
+        title="Form settings"
+        aria-label="Form settings"
+        className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-muted hover:text-ink"
+      >
+        <Settings width={17} height={17} />
+      </button>
     </div>
   );
 }

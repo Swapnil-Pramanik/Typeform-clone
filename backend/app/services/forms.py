@@ -67,6 +67,9 @@ def to_form_out(form: Form) -> FormOut:
     return FormOut.model_validate(
         {
             **{c.name: getattr(form, c.name) for c in Form.__table__.columns},
+            # A form saved before settings existed has none; the defaults are
+            # "everything shown", which is how it already behaved.
+            "settings": form.settings or {},
             "questions": form.live_questions,
         }
     )
@@ -139,6 +142,10 @@ def update_form(db: Session, form_id: int, payload: FormUpdate) -> FormOut:
         setattr(form, field, value)
     db.commit()
     return get_form(db, form_id)
+
+
+class FormClosedError(Exception):
+    """The form exists and is published, but its creator has stopped it."""
 
 
 def delete_form(db: Session, form_id: int) -> None:

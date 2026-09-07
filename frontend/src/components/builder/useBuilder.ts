@@ -18,6 +18,7 @@ import { useDebouncedCallback } from "@/lib/hooks";
 import { keys, useFormQuery } from "@/lib/queries";
 import type {
   Form,
+  FormSettings,
   FormTheme,
   Question,
   QuestionType,
@@ -42,6 +43,9 @@ interface FormPatch {
   welcome_screen?: WelcomeScreen | null;
   /** So is the theme. */
   theme?: FormTheme | null;
+  /** And the display switches and the open/closed flag. */
+  settings?: FormSettings;
+  accepting_responses?: boolean;
 }
 
 export function useBuilder(formId: number) {

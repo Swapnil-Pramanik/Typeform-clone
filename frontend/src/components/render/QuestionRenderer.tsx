@@ -34,6 +34,9 @@ export interface QuestionRendererProps {
   bodySlot?: React.ReactNode;
   /** Hidden in the builder preview, where advancing means nothing. */
   showActions?: boolean;
+  /** From the form's settings; both default to the flow's usual behaviour. */
+  showRequiredAsterisk?: boolean;
+  showAnswerLetters?: boolean;
 }
 
 export function QuestionRenderer({
@@ -51,6 +54,8 @@ export function QuestionRenderer({
   onDescriptionChange,
   bodySlot,
   showActions = true,
+  showRequiredAsterisk = false,
+  showAnswerLetters = true,
 }: QuestionRendererProps) {
   const Input = QUESTION_INPUTS[question.type];
 
@@ -61,6 +66,7 @@ export function QuestionRenderer({
         index={index}
         onTitleChange={onTitleChange}
         onDescriptionChange={onDescriptionChange}
+        showRequiredAsterisk={showRequiredAsterisk}
       />
 
       <div className="flex flex-col gap-2">
@@ -74,6 +80,7 @@ export function QuestionRenderer({
               interactive={interactive}
               autoFocus={autoFocus}
               invalid={Boolean(error)}
+              showLetters={showAnswerLetters}
             />
           ) : null)}
 

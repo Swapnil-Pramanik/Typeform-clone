@@ -19,6 +19,8 @@ interface QuestionHeaderProps {
   index: number | null;
   onTitleChange?: (title: string) => void;
   onDescriptionChange?: (description: string) => void;
+  /** Form settings: an asterisk marks a required question when switched on. */
+  showRequiredAsterisk?: boolean;
 }
 
 const TITLE_CLASS =
@@ -29,6 +31,7 @@ export function QuestionHeader({
   index,
   onTitleChange,
   onDescriptionChange,
+  showRequiredAsterisk = false,
 }: QuestionHeaderProps) {
   const editable = Boolean(onTitleChange);
   const showDescription = editable || Boolean(question.description);
@@ -57,7 +60,15 @@ export function QuestionHeader({
             className={TITLE_CLASS}
           />
         ) : (
-          <h1 className={TITLE_CLASS}>{question.title}</h1>
+          <h1 className={TITLE_CLASS}>
+            {question.title}
+            {showRequiredAsterisk && question.required && (
+              <span aria-hidden="true" className="text-ink-muted">
+                {" "}
+                *
+              </span>
+            )}
+          </h1>
         )}
       </div>
 

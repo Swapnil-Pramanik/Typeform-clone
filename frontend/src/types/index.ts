@@ -81,6 +81,25 @@ export interface FormTheme {
   font?: string;
 }
 
+/** What the respondent flow shows. Every switch defaults to on. */
+export interface FormSettings {
+  show_branding: boolean;
+  show_navigation_arrows: boolean;
+  show_progress_bar: boolean;
+  show_question_number: boolean;
+  show_required_asterisk: boolean;
+  show_answer_letters: boolean;
+}
+
+export const DEFAULT_FORM_SETTINGS: FormSettings = {
+  show_branding: true,
+  show_navigation_arrows: true,
+  show_progress_bar: true,
+  show_question_number: true,
+  show_required_asterisk: true,
+  show_answer_letters: true,
+};
+
 export interface Form {
   id: number;
   title: string;
@@ -88,6 +107,8 @@ export interface Form {
   status: FormStatus;
   welcome_screen: WelcomeScreen | null;
   theme: FormTheme | null;
+  settings: FormSettings;
+  accepting_responses: boolean;
   created_at: string;
   updated_at: string;
   published_at: string | null;
@@ -116,6 +137,9 @@ export interface PublicForm {
   title: string;
   welcome_screen: WelcomeScreen | null;
   theme: FormTheme | null;
+  settings: FormSettings;
+  /** False when the creator has closed the form to new responses. */
+  accepting_responses: boolean;
   questions: Question[];
 }
 

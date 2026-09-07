@@ -35,6 +35,15 @@ class Form(Base):
     )
     welcome_screen: Mapped[dict | None] = mapped_column(JSONText)
     theme: Mapped[dict | None] = mapped_column(JSONText)
+    #: Display switches — what the respondent flow shows. Presentation only, so
+    #: it lives in JSON alongside the theme rather than earning columns.
+    settings: Mapped[dict | None] = mapped_column(JSONText)
+    #: Whether the form still takes submissions. A first-class column rather
+    #: than a key in `settings`, because the server enforces it on every submit:
+    #: this is access control, not presentation.
+    accepting_responses: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="1"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, default=utcnow, server_default=func.now()
     )

@@ -22,6 +22,7 @@ export function YesNoInput({
   onAdvance,
   interactive,
   invalid,
+  showLetters = true,
 }: QuestionInputProps) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -69,9 +70,11 @@ export function YesNoInput({
               !interactive && "cursor-default",
             )}
           >
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-line-strong bg-choice-key text-xs font-medium">
-              {choice.key}
-            </span>
+            {showLetters && (
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-line-strong bg-choice-key text-xs font-medium">
+                {choice.key}
+              </span>
+            )}
             <span className="flex-1">{choice.label}</span>
             {isSelected && <Check width={16} height={16} />}
           </button>

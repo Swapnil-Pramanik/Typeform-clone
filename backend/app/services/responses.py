@@ -24,7 +24,7 @@ from app.schemas import (
     SubmissionIn,
     SubmissionOut,
 )
-from app.services.forms import FormError, load_form_or_raise
+from app.services.forms import FormClosedError, FormError, load_form_or_raise
 from app.services.logic import next_question_id, path_taken
 from app.services.validation import AnswerValidationError, validate_answer
 
@@ -51,6 +51,11 @@ def submit_response(db: Session, form: Form, payload: SubmissionIn) -> Submissio
     ``is_complete=False`` records a partial response — a respondent who dropped
     out — which is what makes the dashboard's completion rate meaningful.
     """
+    # Checked here rather than only in the client: a closed form must refuse a
+    # submission that arrives from a stale tab or straight from curl.
+    if not form.accepting_responses:
+        raise FormClosedError("This form is no longer accepting responses.")
+
     live = {q.id: q for q in form.live_questions if not q.is_ending}
 
     now = datetime.now(timezone.utc)

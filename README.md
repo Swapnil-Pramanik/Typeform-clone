@@ -48,6 +48,7 @@ conversational flow.
 | | Welcome screens: add, edit, button label, estimated time | Built |
 | | Per-form theme — question colour, background, font | Built |
 | | **Logic jumps** — branch on an answer; loops refused at authoring time | Built |
+| | Form settings — display switches, and open/closed | Built |
 | **Publishing** | Publish / unpublish; slug minted once and kept forever | Built |
 | | Public fill page needing no account | Built |
 | **Respondent flow** | One question at a time, directional enter/exit transitions | Built |
@@ -55,6 +56,7 @@ conversational flow.
 | | Inline client validation, re-validated server-side | Built |
 | | Optional welcome screen; endings rendered from data | Built |
 | | The form's own theme applied to the live experience | Built |
+| | Form settings honoured: chrome hidden per switch; closed forms show a notice | Built |
 | | `prefers-reduced-motion` honoured | Built |
 | **Results** | Paginated responses table, single-response view | Built |
 | | Per-question aggregates computed by the database | Built |
@@ -277,7 +279,8 @@ drift from what a respondent sees.
         │   │   ├── ProgressBar.tsx           # top edge
         │   │   ├── NavChevrons.tsx           # bottom-right + Powered by
         │   │   ├── WelcomeScreen.tsx
-        │   │   └── EndingScreen.tsx
+        │   │   ├── EndingScreen.tsx
+        │   │   └── ClosedScreen.tsx       # shown when the creator closed the form
         │   ├── builder/
         │   │   ├── useBuilder.ts             # editing model + autosave
         │   │   ├── FormShell.tsx             # Content · Connect · Share · Results
@@ -291,6 +294,7 @@ drift from what a respondent sees.
         │   │   ├── PanelRow.tsx             # the settings panel's row shapes
         │   │   ├── BuilderToolbar.tsx        # Add content · Design · tools
         │   │   ├── AddElementModal.tsx
+        │   │   ├── FormSettingsModal.tsx    # General · Access · Language
         │   │   ├── SaveIndicator.tsx
         │   │   └── Toggle.tsx
         │   ├── dashboard/
@@ -421,6 +425,8 @@ CREATE TABLE forms (
   status          VARCHAR(16) NOT NULL DEFAULT 'draft',   -- draft | published
   welcome_screen  TEXT,                           -- JSON, nullable
   theme           TEXT,                           -- JSON: colors, font
+  settings        TEXT,                           -- JSON: which chrome the flow shows
+  accepting_responses BOOLEAN NOT NULL DEFAULT 1, -- a real column: see below
   created_at      DATETIME NOT NULL,
   updated_at      DATETIME NOT NULL,
   published_at    DATETIME
@@ -561,6 +567,21 @@ and integers cannot drift into float-precision bugs during a demo. Rejecting a
 partial array is what keeps positions dense and gap-free, which is what makes
 integers safe here at all.
 
+### Decision 4 — settings are JSON, but "closed" is a column
+
+`forms.settings` holds the six display switches the settings dialog writes
+(branding, navigation arrows, progress bar, question number, required asterisk,
+answer letters). They are presentation: nothing queries them, nothing aggregates
+over them, and the set will keep growing. JSON is the honest shape, and every
+switch defaults to on so a form saved before the column existed behaves exactly
+as it did — the absence of settings and "everything shown" are the same thing.
+
+`accepting_responses` is a real `BOOLEAN` column instead, because it is not
+presentation. `submit_response` reads it and raises `FormClosedError` → **409**
+before touching the database, so closing a form is enforced by the server whether
+the respondent is looking at our flow or posting to the endpoint directly. A
+switch the client could ignore would not be access control.
+
 ### Deliberately absent: a users table
 
 There is no auth and no `users` table. See §14.
@@ -578,7 +599,7 @@ Interactive docs at `/docs` when the backend is running.
 | `GET` | `/api/forms` | Dashboard list: status, question count, response count, completed count. Optional `?search=`. |
 | `POST` | `/api/forms` | Create a draft (with one ending block, as the real app does). |
 | `GET` | `/api/forms/{id}` | Full form + live questions + options, for the builder. |
-| `PATCH` | `/api/forms/{id}` | Rename, theme, welcome screen — the target of the autosave. |
+| `PATCH` | `/api/forms/{id}` | Rename, theme, welcome screen, settings, open/closed — the target of the autosave and of the settings dialog. |
 | `DELETE` | `/api/forms/{id}` | Delete the form; questions, options, responses and answers cascade. |
 | `POST` | `/api/forms/{id}/duplicate` | Deep-copy questions and options into a new draft. Responses are never copied. |
 | `POST` | `/api/forms/{id}/publish` | Mint a slug (once) and go live. `400` if the form has no answerable question. |
@@ -597,8 +618,8 @@ Interactive docs at `/docs` when the backend is running.
 
 | Method | Path | Behaviour |
 |---|---|---|
-| `GET` | `/api/f/{slug}` | Published forms only, else `404`. No numeric ID in the payload. |
-| `POST` | `/api/f/{slug}/responses` | Validate, snapshot, store, return the ending payload. |
+| `GET` | `/api/f/{slug}` | Published forms only, else `404`. No numeric ID in the payload. Carries `settings` and `accepting_responses`. |
+| `POST` | `/api/f/{slug}/responses` | Validate, snapshot, store, return the ending payload. `409` if the creator has closed the form. |
 
 `GET /api/health` returns `{"status": "ok"}`.
 
@@ -952,7 +973,10 @@ product puts the feature:
 | Placement | What is stubbed |
 |---|---|
 | Builder → *Connect* tab | Webhooks, Google Sheets, Slack, Zapier, HubSpot, Airtable |
-| Settings panel → *Logic*, *Comments* | Branching and jump logic; per-block comments |
+| Settings panel → *Comments* | Per-block comments. (*Logic* is real — see the branching section.) |
+| Form settings → *Access & Scheduling* | Scheduling a close date, a response limit, and a password. Open/closed is real. |
+| Form settings → *Language*, *Block references* | Respondent-facing translations; piping earlier answers into later questions |
+| Form settings → *Form mode* | Only *Universal* is modelled; Score and Quiz describe behaviour this engine does not have |
 | Settings panel toggles | Randomize, "Other", "None", Vertical alignment — present but inert |
 | Add-element modal | Picture Choice, NPS, Ranking, Matrix, Date, Signature, Payment, File Upload, Scheduler, Statement, Question Group, Redirect, Welcome Screen — shown greyed out in their real groups |
 | Add-element modal tabs | *Import questions*, *Create with AI* |

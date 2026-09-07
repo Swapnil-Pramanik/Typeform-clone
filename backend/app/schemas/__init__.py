@@ -2,6 +2,7 @@
 
 from app.schemas.form import (
     FormCreate,
+    FormSettings,
     FormOut,
     FormSummaryOut,
     FormUpdate,
@@ -33,6 +34,7 @@ __all__ = [
     "AnswerOut",
     "ChoiceCount",
     "FormCreate",
+    "FormSettings",
     "FormOut",
     "FormSummaryOut",
     "FormSummaryStats",

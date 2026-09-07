@@ -7,6 +7,7 @@
 
 import type {
   Form,
+  FormSettings,
   FormSummary,
   FormSummaryStats,
   FormTheme,
@@ -113,7 +114,13 @@ export const api = {
 
   updateForm: (
     id: number,
-    patch: { title?: string; welcome_screen?: WelcomeScreen | null; theme?: FormTheme | null },
+    patch: {
+      title?: string;
+      welcome_screen?: WelcomeScreen | null;
+      theme?: FormTheme | null;
+      settings?: FormSettings;
+      accepting_responses?: boolean;
+    },
   ) => request<Form>(`/api/forms/${id}`, { method: "PATCH", body: body(patch) }),
 
   deleteForm: (id: number) => request<void>(`/api/forms/${id}`, { method: "DELETE" }),

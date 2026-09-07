@@ -203,3 +203,55 @@ def test_deleting_a_form_that_has_responses_cascades(client):
     assert client.delete(f"/api/forms/{form['id']}").status_code == 204
     assert client.get(f"/api/forms/{form['id']}").status_code == 404
     assert client.get(f"/api/f/{slug}").status_code == 404
+
+
+def test_a_closed_form_refuses_submissions(client):
+    """Closing a form is access control, so the server enforces it itself.
+
+    A stale tab, or anything posting straight to the API, must be refused — the
+    client hiding the questions is a courtesy, not the mechanism.
+    """
+    form, question = _form_with_question(client)
+    slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+
+    answer = {"answers": [{"question_id": question["id"], "value": "Ada"}]}
+    assert client.post(f"/api/f/{slug}/responses", json=answer).status_code == 200
+
+    closed = client.patch(f"/api/forms/{form['id']}", json={"accepting_responses": False})
+    assert closed.status_code == 200
+    assert closed.json()["accepting_responses"] is False
+
+    refused = client.post(f"/api/f/{slug}/responses", json=answer)
+    assert refused.status_code == 409
+    assert "no longer accepting" in refused.json()["detail"].lower()
+
+    # The form itself stays readable, so the flow can explain why.
+    public = client.get(f"/api/f/{slug}").json()
+    assert public["accepting_responses"] is False
+
+    client.patch(f"/api/forms/{form['id']}", json={"accepting_responses": True})
+    assert client.post(f"/api/f/{slug}/responses", json=answer).status_code == 200
+
+
+def test_display_settings_round_trip_and_default_to_shown(client):
+    form = client.post("/api/forms", json={"title": "Display"}).json()
+    assert form["settings"]["show_progress_bar"] is True
+
+    updated = client.patch(
+        f"/api/forms/{form['id']}",
+        json={"settings": {"show_progress_bar": False, "show_answer_letters": False}},
+    ).json()
+    assert updated["settings"]["show_progress_bar"] is False
+    assert updated["settings"]["show_answer_letters"] is False
+    # Unmentioned switches keep their default rather than vanishing.
+    assert updated["settings"]["show_branding"] is True
+
+
+def test_display_settings_reach_the_respondent(client):
+    """The flow renders from these, so they have to cross the public surface."""
+    form, _ = _form_with_question(client)
+    client.patch(
+        f"/api/forms/{form['id']}", json={"settings": {"show_question_number": False}}
+    )
+    slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+    assert client.get(f"/api/f/{slug}").json()["settings"]["show_question_number"] is False

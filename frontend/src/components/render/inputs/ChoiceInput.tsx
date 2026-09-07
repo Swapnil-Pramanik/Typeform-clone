@@ -32,6 +32,7 @@ export function ChoiceInput({
   onAdvance,
   interactive,
   invalid,
+  showLetters = true,
 }: QuestionInputProps) {
   const multi = Boolean(question.settings?.multi_select);
   const selected = toArray(value);
@@ -94,14 +95,16 @@ export function ChoiceInput({
                   !interactive && "cursor-default",
                 )}
               >
-                <span
-                  className={cn(
-                    "flex h-6 w-6 shrink-0 items-center justify-center rounded",
-                    "border border-line-strong bg-choice-key text-xs font-medium",
-                  )}
-                >
-                  {LETTERS[index] ?? index + 1}
-                </span>
+                {showLetters && (
+                  <span
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded",
+                      "border border-line-strong bg-choice-key text-xs font-medium",
+                    )}
+                  >
+                    {LETTERS[index] ?? index + 1}
+                  </span>
+                )}
                 <span className="flex-1">{option.label}</span>
                 {isSelected && <Check width={16} height={16} className="shrink-0" />}
               </button>

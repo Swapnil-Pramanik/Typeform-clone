@@ -100,6 +100,22 @@ class QuestionOrderIn(BaseModel):
 # --- forms -------------------------------------------------------------------
 
 
+class FormSettings(BaseModel):
+    """What the respondent flow shows.
+
+    Every switch defaults to on, so a form created before these existed behaves
+    exactly as it did — the absence of settings and "everything shown" are the
+    same thing.
+    """
+
+    show_branding: bool = True
+    show_navigation_arrows: bool = True
+    show_progress_bar: bool = True
+    show_question_number: bool = True
+    show_required_asterisk: bool = True
+    show_answer_letters: bool = True
+
+
 class FormCreate(BaseModel):
     title: str = Field(default="Untitled form", min_length=1, max_length=500)
 
@@ -108,6 +124,8 @@ class FormUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=500)
     welcome_screen: dict[str, Any] | None = None
     theme: dict[str, Any] | None = None
+    settings: FormSettings | None = None
+    accepting_responses: bool | None = None
 
 
 class FormSummaryOut(ORMModel):
@@ -136,6 +154,8 @@ class FormOut(ORMModel):
     status: FormStatus
     welcome_screen: dict[str, Any] | None
     theme: dict[str, Any] | None
+    settings: FormSettings = FormSettings()
+    accepting_responses: bool = True
     created_at: datetime
     updated_at: datetime
     published_at: datetime | None
@@ -149,4 +169,8 @@ class PublicFormOut(BaseModel):
     title: str
     welcome_screen: dict[str, Any] | None
     theme: dict[str, Any] | None
+    settings: FormSettings = FormSettings()
+    #: False when the creator has closed the form; the flow shows a notice
+    #: instead of the questions, and the server refuses the submission anyway.
+    accepting_responses: bool = True
     questions: list[QuestionOut]

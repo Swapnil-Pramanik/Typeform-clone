@@ -17,4 +17,6 @@ export interface QuestionInputProps {
   autoFocus: boolean;
   /** Set when the field should read as invalid; the message renders above it. */
   invalid: boolean;
+  /** Form setting: the A/B/C keys beside choice cards. */
+  showLetters?: boolean;
 }

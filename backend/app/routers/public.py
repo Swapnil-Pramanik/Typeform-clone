@@ -7,7 +7,14 @@ and it requires no authentication by design.
 
 from fastapi import APIRouter, Request
 
-from app.routers.deps import DbSession, FormError, not_found, validation_error
+from app.routers.deps import (
+    DbSession,
+    FormClosedError,
+    FormError,
+    conflict,
+    not_found,
+    validation_error,
+)
 from app.schemas import PublicFormOut, SubmissionIn, SubmissionOut
 from app.services import forms as form_service
 from app.services import responses as response_service
@@ -28,6 +35,8 @@ def get_public_form(slug: str, db: DbSession):
         title=form.title,
         welcome_screen=form.welcome_screen,
         theme=form.theme,
+        settings=form.settings or {},
+        accepting_responses=form.accepting_responses,
         questions=form.live_questions,
     )
 
@@ -47,5 +56,7 @@ def submit(slug: str, payload: SubmissionIn, request: Request, db: DbSession):
 
     try:
         return response_service.submit_response(db, form, payload)
+    except FormClosedError as error:
+        raise conflict(error) from error
     except AnswerValidationError as error:
         raise validation_error(error) from error

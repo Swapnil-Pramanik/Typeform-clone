@@ -10,14 +10,27 @@ interface NavChevronsProps {
   onDown: () => void;
   canGoUp: boolean;
   canGoDown: boolean;
+  /** Form settings. With both off the corner is empty and nothing renders. */
+  showArrows?: boolean;
+  showBranding?: boolean;
 }
 
 const BUTTON =
   "flex h-9 w-9 items-center justify-center bg-accent text-accent-ink transition-opacity disabled:opacity-30";
 
-export function NavChevrons({ onUp, onDown, canGoUp, canGoDown }: NavChevronsProps) {
+export function NavChevrons({
+  onUp,
+  onDown,
+  canGoUp,
+  canGoDown,
+  showArrows = true,
+  showBranding = true,
+}: NavChevronsProps) {
+  if (!showArrows && !showBranding) return null;
+
   return (
     <div className="fixed bottom-5 right-5 z-30 flex items-center gap-3">
+      {showBranding && (
       <a
         href="https://www.typeform.com"
         target="_blank"
@@ -26,7 +39,9 @@ export function NavChevrons({ onUp, onDown, canGoUp, canGoDown }: NavChevronsPro
       >
         Powered by <span className="font-semibold text-ink">Typeform</span>
       </a>
+      )}
 
+      {showArrows && (
       <div className="flex overflow-hidden rounded-md shadow-sm">
         <button
           type="button"
@@ -47,6 +62,7 @@ export function NavChevrons({ onUp, onDown, canGoUp, canGoDown }: NavChevronsPro
           <ChevronDown width={16} height={16} />
         </button>
       </div>
+      )}
     </div>
   );
 }

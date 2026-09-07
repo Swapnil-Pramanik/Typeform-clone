@@ -11,6 +11,7 @@ import { use, useMemo, useState } from "react";
 
 import { AddElementModal } from "@/components/builder/AddElementModal";
 import { BuilderToolbar } from "@/components/builder/BuilderToolbar";
+import { FormSettingsModal } from "@/components/builder/FormSettingsModal";
 import { FormShell } from "@/components/builder/FormShell";
 import { PreviewPane } from "@/components/builder/PreviewPane";
 import { DesignSettings } from "@/components/builder/DesignSettings";
@@ -45,6 +46,7 @@ export default function BuilderPage({
   const [chosen, setChosen] = useState<Selection | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [logicError, setLogicError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const questions = useMemo(
     () => builder.form?.questions ?? [],
@@ -151,6 +153,7 @@ export default function BuilderPage({
         <BuilderToolbar
           onAddContent={() => setAddOpen(true)}
           onOpenDesign={() => setChosen(DESIGN)}
+          onOpenSettings={() => setSettingsOpen(true)}
           designActive={selection.kind === "design"}
         />
       }
@@ -223,6 +226,18 @@ export default function BuilderPage({
               }}
             />
           )}
+
+          <FormSettingsModal
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            form={builder.form}
+            onSave={(patch) =>
+              run(async () => {
+                builder.patchForm(patch);
+                toast.show("Settings saved", "success");
+              })
+            }
+          />
 
           <AddElementModal
             open={addOpen}

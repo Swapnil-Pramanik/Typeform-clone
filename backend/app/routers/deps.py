@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.services.forms import FormError
+from app.services.forms import FormClosedError, FormError
 from app.services.questions import QuestionError
 from app.services.validation import AnswerValidationError
 
@@ -21,6 +21,11 @@ def bad_request(error: Exception) -> HTTPException:
     return HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(error))
 
 
+def conflict(error: Exception) -> HTTPException:
+    """409 — the request is fine, the resource's state refuses it."""
+    return HTTPException(status.HTTP_409_CONFLICT, detail=str(error))
+
+
 def validation_error(error: AnswerValidationError) -> HTTPException:
     """422 with the offending question ID, so the flow can jump to it."""
     return HTTPException(
@@ -31,9 +36,11 @@ def validation_error(error: AnswerValidationError) -> HTTPException:
 
 __all__ = [
     "DbSession",
+    "FormClosedError",
     "FormError",
     "QuestionError",
     "bad_request",
+    "conflict",
     "not_found",
     "validation_error",
 ]
