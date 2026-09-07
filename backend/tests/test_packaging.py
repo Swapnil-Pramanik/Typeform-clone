@@ -38,3 +38,17 @@ def test_libsql_driver_is_a_hard_dependency():
     """Production runs on Turso, so the driver cannot be an optional extra."""
     pyproject = tomllib.loads((BACKEND / "pyproject.toml").read_text())
     assert "sqlalchemy-libsql" in _names(pyproject["project"]["dependencies"])
+
+
+def test_settings_tolerate_pasted_whitespace_and_quotes():
+    """Env vars pasted into a deployment UI arrive with stray characters."""
+    from app.config import Settings
+
+    dirty = Settings(
+        database_url="  sqlite+libsql://host?secure=true\n",
+        database_auth_token='"eyJhbGciOiJFZERTQSJ9.body.sig"\n',
+        cors_origins=" http://localhost:3000 ",
+    )
+    assert dirty.database_url == "sqlite+libsql://host?secure=true"
+    assert dirty.database_auth_token == "eyJhbGciOiJFZERTQSJ9.body.sig"
+    assert dirty.cors_origins == "http://localhost:3000"

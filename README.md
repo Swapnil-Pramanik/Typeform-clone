@@ -105,7 +105,7 @@ Open <http://localhost:3000>. The seeded forms are live at
 ### Checks
 
 ```bash
-cd backend  && .venv/bin/python -m pytest tests   # 13 tests
+cd backend  && .venv/bin/python -m pytest tests   # 14 tests
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -753,6 +753,10 @@ set -a && . ./.env.production && set +a
 * Vercel loads the serverless entrypoint **by file path**, putting that file's own
   directory on `sys.path` rather than the backend root, so `import app.*` fails.
   `api/index.py` prepends the root before importing anything.
+* Settings are trimmed of whitespace and matching quotes. A credential pasted
+  into a deployment dashboard reliably picks up a trailing newline, which reads
+  as configured while the driver rejects it — a 349-character token that should
+  have been 348, surfacing only as an opaque 401.
 * Route with `routes`/`dest`, not `rewrites`/`destination`. A rewrite *replaces*
   the path before the function sees it, so every request arrives at the ASGI app
   as `/api/index` and FastAPI answers `{"detail":"Not Found"}` for the whole API
@@ -767,7 +771,7 @@ Set `CORS_ORIGINS` on the backend project to the deployed frontend origin plus
 
 `backend/tests/test_api.py` runs the API end to end against a throwaway SQLite
 file, injected through the `get_db` dependency and configured with
-`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Thirteen tests, each covering one
+`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Fourteen tests, each covering one
 invariant the design rests on rather than one function:
 
 | Test | Invariant |
@@ -785,6 +789,7 @@ invariant the design rests on rather than one function:
 | `test_deleting_a_form_that_has_responses_cascades` | Deleting a form with collected answers succeeds and leaves no orphans. |
 | `test_requirements_matches_pyproject_dependencies` | The two dependency lists cannot drift apart. |
 | `test_libsql_driver_is_a_hard_dependency` | The Turso driver stays a hard dependency, not an optional extra. |
+| `test_settings_tolerate_pasted_whitespace_and_quotes` | Env vars survive being pasted into a deployment dashboard. |
 
 The frontend is covered by `tsc --noEmit`, ESLint (including the React hooks
 rules) and a production build, all clean.
