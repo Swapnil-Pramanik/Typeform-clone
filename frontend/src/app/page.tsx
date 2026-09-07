@@ -42,7 +42,7 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<WorkspaceTabName>("Forms");
   const [search, setSearch] = useState("");
   const [layout, setLayout] = useState<Layout>("list");
-  const [sort, setSort] = useState<SortKey>("updated");
+  const [sort, setSort] = useState<SortKey>("created");
   const [pendingDelete, setPendingDelete] = useState<FormSummary | null>(null);
 
   const {
@@ -67,11 +67,11 @@ export default function DashboardPage() {
   };
 
   const sorted = useMemo(() => {
+    // The API already returns the list most-recently-updated first, which is
+    // exactly "Last updated" — the other two re-sort a copy.
     const list = [...(forms ?? [])];
-    if (sort === "name")
+    if (sort === "alphabetical")
       return list.sort((a, b) => a.title.localeCompare(b.title));
-    if (sort === "responses")
-      return list.sort((a, b) => b.response_count - a.response_count);
     if (sort === "created")
       return list.sort((a, b) => b.created_at.localeCompare(a.created_at));
     return list;

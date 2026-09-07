@@ -299,7 +299,7 @@ drift from what a respondent sees.
         │   │   ├── ResponsesTable.tsx  ResponseDetail.tsx  SummaryPanel.tsx
         │   └── ui/
         │       ├── Button.tsx  Modal.tsx  Toast.tsx  Spinner.tsx
-        │       ├── InlineText.tsx  EmptyState.tsx  ComingSoon.tsx
+        │       ├── Dropdown.tsx  InlineText.tsx  EmptyState.tsx  ComingSoon.tsx
         │       ├── ThemeToggle.tsx  icons.tsx
         ├── lib/
         │   ├── api.ts                        # the only place that knows the API URL
@@ -664,6 +664,14 @@ Notes worth stating:
   store, so `ThemeToggle` needs no effect and no mount-state.
 - **Reduced motion:** `motion.ts` swaps the translate-and-blur step for a plain
   cross-fade, and `globals.css` collapses transition durations.
+- **No native `<select>` anywhere.** A native dropdown renders its list with the
+  operating system's widget, which cannot be styled and looks nothing like the
+  rest of the product. `ui/Dropdown.tsx` replaces all of them — the sort control,
+  the answer-type picker and the three in the logic editor — and therefore
+  re-earns what the native control gave away: a labelled `listbox`, full keyboard
+  operation (arrows, Home/End, Enter, Escape), and `aria-activedescendant` so
+  assistive tech follows the highlight. Focus stays on the trigger, keeping one
+  tab stop and avoiding focus-restoration bugs.
 - Icons are inline SVG in `ui/icons.tsx` — `currentColor`, so they theme for
   free, and no icon package for two dozen glyphs.
 

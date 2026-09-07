@@ -217,6 +217,18 @@ export const CaretDown = (p: IconProps) => (
   <Icon {...p} fill="currentColor" stroke="none"><path d="m12 15 5-6H7Z" /></Icon>
 );
 
+export const Pencil = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16Z" /><path d="m14.5 7.5 2 2" />
+  </Icon>
+);
+export const SortAlpha = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M17 4v15m0 0 3-3m-3 3-3-3" />
+    <path d="M5 9h5L5 15h5" /><path d="M6.2 4h2.6l1.2 4H5Z" fill="none" />
+  </Icon>
+);
+
 /* --- question-type glyphs ------------------------------------------------- */
 
 export const TypeShortText = (p: IconProps) => (

@@ -14,7 +14,8 @@ import { useState } from "react";
 
 import { LogicPanel, type DraftRule } from "@/components/builder/LogicPanel";
 import { Toggle } from "@/components/builder/Toggle";
-import { ChevronDown, Lock, Sparkle, Trash } from "@/components/ui/icons";
+import { Dropdown } from "@/components/ui/Dropdown";
+import { Lock, Sparkle, Trash } from "@/components/ui/icons";
 import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 import { ANSWER_TYPES, BLOCKS, isChoiceType } from "@/lib/questionTypes";
@@ -75,27 +76,20 @@ export function SettingsPanel({
             </Section>
 
             <Section title="Answer">
-              <label className="relative block">
-                <select
-                  value={question.type}
-                  onChange={(event) =>
-                    onPatch({ type: event.target.value as QuestionType })
-                  }
-                  aria-label="Answer type"
-                  className="w-full appearance-none rounded-lg border border-line-strong bg-bg px-3 py-2 pr-8 text-[13px] text-ink"
-                >
-                  {ANSWER_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {BLOCKS[type].label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  width={15}
-                  height={15}
-                  className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint"
-                />
-              </label>
+              <Dropdown
+                label="Answer type"
+                value={question.type}
+                onChange={(type) => onPatch({ type })}
+                options={ANSWER_TYPES.map((type) => {
+                  const Icon = BLOCKS[type].icon;
+                  return {
+                    value: type,
+                    label: BLOCKS[type].label,
+                    icon: <Icon width={15} height={15} />,
+                  };
+                })}
+                triggerClassName="w-full border-line-strong bg-bg text-ink"
+              />
             </Section>
 
             <Section>

@@ -2,27 +2,28 @@
 
 /** The workspace title row: name, actions, sort control and the List/Grid toggle. */
 
+import { Dropdown } from "@/components/ui/Dropdown";
 import {
   Calendar,
-  ChevronDown,
   Dots,
   Gem,
   Grid,
   Invite,
   List,
+  Pencil,
+  SortAlpha,
 } from "@/components/ui/icons";
 import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { cn } from "@/lib/format";
 
-export type SortKey = "updated" | "created" | "name" | "responses";
+export type SortKey = "created" | "updated" | "alphabetical";
 export type Layout = "list" | "grid";
 
-const SORT_LABELS: Record<SortKey, string> = {
-  updated: "Last updated",
-  created: "Date created",
-  name: "Name",
-  responses: "Responses",
-};
+const SORTS: { value: SortKey; label: string; icon: React.ReactNode }[] = [
+  { value: "created", label: "Date created", icon: <Calendar width={16} height={16} /> },
+  { value: "updated", label: "Last updated", icon: <Pencil width={16} height={16} /> },
+  { value: "alphabetical", label: "Alphabetical", icon: <SortAlpha width={16} height={16} /> },
+];
 
 interface WorkspaceHeaderProps {
   title: string;
@@ -71,30 +72,17 @@ export function WorkspaceHeader({
       </button>
 
       <div className="ml-auto flex items-center gap-2">
-        <div className="relative">
-          <Calendar
-            width={15}
-            height={15}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted"
-          />
-          <select
-            aria-label="Sort forms"
-            value={sort}
-            onChange={(event) => onSort(event.target.value as SortKey)}
-            className="appearance-none rounded-lg border border-line bg-panel py-1.5 pl-8 pr-8 text-[14px] text-ink-muted"
-          >
-            {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
-              <option key={key} value={key}>
-                {SORT_LABELS[key]}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            width={15}
-            height={15}
-            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted"
-          />
-        </div>
+        <Dropdown
+          label="Sort forms"
+          value={sort}
+          onChange={onSort}
+          options={SORTS}
+          leadingIcon={
+            SORTS.find((option) => option.value === sort)?.icon ?? (
+              <Calendar width={16} height={16} />
+            )
+          }
+        />
 
         <div className="flex overflow-hidden rounded-lg border border-line bg-panel">
           {(

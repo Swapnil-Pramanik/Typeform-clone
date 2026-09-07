@@ -8,6 +8,7 @@
  * the execution order.
  */
 
+import { Dropdown } from "@/components/ui/Dropdown";
 import { Plus, Trash } from "@/components/ui/icons";
 import { cn } from "@/lib/format";
 import type { Question, QuestionRule, RuleOperator } from "@/types";
@@ -178,18 +179,13 @@ function Select({
   options: { value: string; label: string }[];
 }) {
   return (
-    <select
-      aria-label={label}
+    <Dropdown
+      label={label}
       value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className={cn(FIELD, "appearance-none")}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      onChange={onChange}
+      options={options}
+      triggerClassName={cn(FIELD, "text-[13px]")}
+    />
   );
 }
 
