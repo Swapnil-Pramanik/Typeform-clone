@@ -86,6 +86,8 @@ class FormSummaryOut(ORMModel):
     title: str
     slug: str | None
     status: FormStatus
+    #: Carried so the dashboard's row thumbnail can preview the form's colour.
+    theme: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
     published_at: datetime | None

@@ -81,6 +81,8 @@ export interface FormSummary {
   title: string;
   slug: string | null;
   status: FormStatus;
+  /** Drives the dashboard row's thumbnail colour. */
+  theme: FormTheme | null;
   created_at: string;
   updated_at: string;
   published_at: string | null;

@@ -33,6 +33,16 @@ export function absoluteTime(iso: string): string {
   });
 }
 
+/** `Sep 07, 2026` — the dashboard shows a date, not a timestamp. */
+export function shortDate(iso: string): string {
+  const date = new Date(iso.endsWith("Z") || iso.includes("+") ? iso : `${iso}Z`);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
+
 export function percent(fraction: number): string {
   return `${Math.round(fraction * 100)}%`;
 }

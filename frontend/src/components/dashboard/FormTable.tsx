@@ -2,11 +2,12 @@
 
 /** The workspace pane's list and grid views over the form summaries. */
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { FormThumbnail } from "@/components/dashboard/FormThumbnail";
 import { RowMenu } from "@/components/dashboard/RowMenu";
-import { cn, relativeTime } from "@/lib/format";
+import { Integrations } from "@/components/ui/icons";
+import { cn, percent, relativeTime, shortDate } from "@/lib/format";
 import type { FormSummary } from "@/types";
 
 export interface FormRowActions {
@@ -19,6 +20,19 @@ export interface FormRowActions {
 interface FormTableProps extends FormRowActions {
   forms: FormSummary[];
   layout: "list" | "grid";
+}
+
+/**
+ * One grid template shared by the header and every row, so the columns cannot
+ * drift apart. The name column takes the slack; the rest are fixed.
+ */
+const COLUMNS =
+  "grid grid-cols-[minmax(0,1fr)_104px_104px_148px_112px_44px] items-center gap-2";
+
+/** Completion is shown as a share of responses, and a form with none shows a dash. */
+function completion(form: FormSummary): string {
+  if (form.response_count === 0) return "–";
+  return percent(form.completed_count / form.response_count);
 }
 
 export function FormTable({ forms, layout, ...actions }: FormTableProps) {
@@ -35,16 +49,19 @@ export function FormTable({ forms, layout, ...actions }: FormTableProps) {
             className="cursor-pointer rounded-xl border border-line bg-panel p-4 transition-colors hover:border-line-strong"
           >
             <div className="flex items-start justify-between gap-2">
-              <h3 className="truncate text-sm font-medium text-ink">{form.title}</h3>
+              <div className="flex min-w-0 items-center gap-2.5">
+                <FormThumbnail form={form} className="h-8 w-8" />
+                <h3 className="truncate text-[15px] text-ink-strong">{form.title}</h3>
+              </div>
               <RowMenu form={form} {...bind(actions, form)} />
             </div>
-            <StatusPill status={form.status} />
-            <dl className="mt-3 flex gap-4 text-[12px] text-ink-muted">
-              <Pair label="Responses" value={form.response_count} />
-              <Pair label="Completed" value={form.completed_count} />
+            <DraftMark form={form} className="mt-2" />
+            <dl className="mt-3 flex gap-5 text-[13px] text-ink-muted">
+              <Pair label="Responses" value={form.response_count || "–"} />
+              <Pair label="Completed" value={completion(form)} />
               <Pair label="Questions" value={form.question_count} />
             </dl>
-            <p className="mt-2 text-[11px] text-ink-faint">
+            <p className="mt-2 text-[12px] text-ink-faint">
               Updated {relativeTime(form.updated_at)}
             </p>
           </li>
@@ -54,54 +71,64 @@ export function FormTable({ forms, layout, ...actions }: FormTableProps) {
   }
 
   return (
-    <div className="tf-scrollbar overflow-x-auto rounded-xl border border-line bg-panel">
-      <table className="w-full min-w-[720px] border-collapse text-left text-[13px]">
-        <thead>
-          <tr className="border-b border-line text-[11px] uppercase tracking-wide text-ink-faint">
-            <th className="px-4 py-2.5 font-semibold">Name</th>
-            <th className="px-4 py-2.5 font-semibold">Responses</th>
-            <th className="px-4 py-2.5 font-semibold">Completed</th>
-            <th className="px-4 py-2.5 font-semibold">Updated</th>
-            <th className="px-4 py-2.5 font-semibold">Integrations</th>
-            <th className="w-10 px-4 py-2.5" />
-          </tr>
-        </thead>
-        <tbody>
-          {forms.map((form) => (
-            <tr
-              key={form.id}
+    <div className="flex flex-col">
+      <div className={cn(COLUMNS, "px-3 pb-2 text-[13px] text-ink-muted")}>
+        <span />
+        <span className="text-center">Responses</span>
+        <span className="text-center">Completed</span>
+        <span>Updated</span>
+        <span>Integrations</span>
+        <span />
+      </div>
+
+      <ul className="flex flex-col gap-2">
+        {forms.map((form) => (
+          <li key={form.id}>
+            <div
               onClick={() => open(form)}
-              className="cursor-pointer border-b border-line last:border-0 hover:bg-muted"
+              className={cn(
+                COLUMNS,
+                "group cursor-pointer rounded-lg border border-line bg-panel px-3 py-2",
+                "transition-colors hover:border-line-strong",
+              )}
             >
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/forms/${form.id}/create`}
-                    onClick={(event) => event.stopPropagation()}
-                    className="truncate font-medium text-ink hover:underline"
-                  >
-                    {form.title}
-                  </Link>
-                  <StatusPill status={form.status} />
-                </div>
-              </td>
-              <td className="px-4 py-3 tabular-nums text-ink-muted">
-                {form.response_count}
-              </td>
-              <td className="px-4 py-3 tabular-nums text-ink-muted">
-                {form.completed_count}
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 text-ink-muted">
-                {relativeTime(form.updated_at)}
-              </td>
-              <td className="px-4 py-3 text-ink-faint">—</td>
-              <td className="px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <FormThumbnail form={form} className="h-8 w-8" />
+                <span className="truncate text-[15px] text-ink-strong">
+                  {form.title}
+                </span>
+                <DraftMark form={form} />
+              </div>
+
+              <span className="text-center text-[14px] tabular-nums text-ink-muted">
+                {form.response_count || "–"}
+              </span>
+              <span className="text-center text-[14px] tabular-nums text-ink-muted">
+                {completion(form)}
+              </span>
+              <span className="whitespace-nowrap text-[14px] text-ink-muted">
+                {shortDate(form.updated_at)}
+              </span>
+
+              <span>
+                <button
+                  type="button"
+                  title="Coming soon"
+                  aria-label="Integrations"
+                  onClick={(event) => event.stopPropagation()}
+                  className="rounded-lg border border-line p-1.5 text-ink-muted opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                  <Integrations width={16} height={16} />
+                </button>
+              </span>
+
+              <span className="flex justify-end">
                 <RowMenu form={form} {...bind(actions, form)} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -115,25 +142,30 @@ function bind(actions: FormRowActions, form: FormSummary) {
   };
 }
 
-function StatusPill({ status }: { status: FormSummary["status"] }) {
+/**
+ * The real product shows no status in this list. A draft still needs marking
+ * here, because the seeded workspace deliberately contains one and a reviewer
+ * has no other way to tell it apart — so drafts get a quiet label and published
+ * forms get nothing, which keeps the row as clean as the reference.
+ */
+function DraftMark({ form, className }: { form: FormSummary; className?: string }) {
+  if (form.status !== "draft") return null;
   return (
     <span
       className={cn(
-        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
-        status === "published"
-          ? "bg-success/10 text-success"
-          : "bg-muted text-ink-muted",
+        "shrink-0 rounded-full bg-muted-strong px-2 py-0.5 text-[11px] font-medium text-ink-muted",
+        className,
       )}
     >
-      {status}
+      Draft
     </span>
   );
 }
 
-function Pair({ label, value }: { label: string; value: number }) {
+function Pair({ label, value }: { label: string; value: number | string }) {
   return (
     <div>
-      <dt className="text-[10px] uppercase tracking-wide text-ink-faint">{label}</dt>
+      <dt className="text-[11px] text-ink-faint">{label}</dt>
       <dd className="tabular-nums text-ink">{value}</dd>
     </div>
   );
