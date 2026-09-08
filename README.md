@@ -104,7 +104,7 @@ cd backend
 uv venv --python 3.12 && uv pip install -e .
 cp .env.example .env                    # DATABASE_URL=sqlite:///./typeform.db
 .venv/bin/alembic upgrade head          # create the schema
-.venv/bin/python -m app.seed            # idempotent demo data
+.venv/bin/python -m app.seed            # demo data; refuses if responses exist
 .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
@@ -367,7 +367,7 @@ drift from what a respondent sees.
 | `services/validation.py` | `validate_answer(question, raw) -> TypedValue`. The rules, written once, in a docstring the TypeScript mirror points back to. |
 | `routers/deps.py` | The session dependency and the three exception→HTTP translations. |
 | `routers/*.py` | Parse, call a service, return. |
-| `seed.py` | Idempotent: deletes only the three forms it owns, then rebuilds them from a fixed random seed so re-seeding reproduces the same charts. |
+| `seed.py` | Rebuilds the three forms it owns from a fixed random seed, so re-seeding reproduces the same charts. It **refuses** if those forms have collected responses since — re-seeding cascades, and on a live database that is data loss rather than a reset. `--force` says it anyway. |
 | `scripts/profile_queries.py` | Counts the SQL statements each endpoint emits. On SQLite-over-HTTP that count *is* the latency — see §14. |
 
 ### Frontend

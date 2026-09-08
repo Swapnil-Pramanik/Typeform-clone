@@ -12,7 +12,7 @@ re-seeds of the production database.
 import random
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
@@ -451,14 +451,42 @@ def _seed_event_responses(db: Session, form: Form, rng: random.Random) -> None:
         )
 
 
-def _clear_seeded(db: Session) -> None:
-    """Remove any previous run of this script. Nothing else is touched."""
+class SeedWouldDestroyData(Exception):
+    """The seeded forms have collected real responses since they were seeded."""
+
+
+def _clear_seeded(db: Session, force: bool = False) -> None:
+    """Remove any previous run of this script. Nothing else is touched.
+
+    "Nothing else" was doing a lot of work in that sentence. Re-seeding deletes
+    the three seeded forms and cascades — which takes every response collected
+    on them since, along with their version history. That is correct for a fresh
+    database and destructive for a live one, and the script gave no sign of the
+    difference.
+
+    So it now counts what it is about to destroy and refuses if the answer is
+    not zero. `--force` says it anyway.
+    """
     existing = db.scalars(
         select(Form).where(
             Form.slug.in_([FEEDBACK_SLUG, EVENT_SLUG, SUPPORT_SLUG])
             | (Form.title == DRAFT_TITLE)
         )
     ).all()
+    if not existing:
+        return
+
+    ids = [form.id for form in existing]
+    collected = (
+        db.scalar(select(func.count(Response.id)).where(Response.form_id.in_(ids))) or 0
+    )
+    if collected and not force:
+        raise SeedWouldDestroyData(
+            f"{collected} response(s) have been collected on the seeded forms.\n"
+            f"Re-seeding would delete them. Re-run with --force if that is what "
+            f"you want."
+        )
+
     for form in existing:
         db.delete(form)
     db.commit()
@@ -476,10 +504,10 @@ def _clear_seeded(db: Session) -> None:
 # panel says in as many words. One edit produces one real entry.
 
 
-def seed() -> None:
+def seed(force: bool = False) -> None:
     rng = random.Random(RANDOM_SEED)
     with SessionLocal() as db:
-        _clear_seeded(db)
+        _clear_seeded(db, force=force)
 
         feedback, event, support, draft = (
             _feedback_form(),
@@ -504,4 +532,10 @@ def seed() -> None:
 
 
 if __name__ == "__main__":
-    seed()
+    import sys
+
+    try:
+        seed(force="--force" in sys.argv)
+    except SeedWouldDestroyData as refusal:
+        print(f"Refusing to seed.\n{refusal}")
+        raise SystemExit(1) from refusal

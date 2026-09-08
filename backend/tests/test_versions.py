@@ -196,3 +196,33 @@ def test_the_seed_writes_no_history_at_all(db_session, monkeypatch):
     seed_module.seed()
 
     assert db_session.query(FormVersion).count() == 0
+
+
+def test_seeding_refuses_to_delete_collected_responses(db_session, monkeypatch):
+    """Re-seeding cascades. On a live database that is data loss, not a reset.
+
+    Written after doing exactly that to the deployed database: `python -m
+    app.seed` deleted the three seeded forms and every response collected on
+    them, with nothing in the script to suggest it would.
+    """
+    from sqlalchemy.orm import sessionmaker
+
+    import app.seed as seed_module
+    from app.models import Response
+
+    factory = sessionmaker(
+        bind=db_session.get_bind(), autoflush=False, expire_on_commit=False
+    )
+    monkeypatch.setattr(seed_module, "SessionLocal", factory)
+
+    seed_module.seed()
+    before = db_session.query(Response).count()
+    assert before > 0
+
+    with pytest.raises(seed_module.SeedWouldDestroyData):
+        seed_module.seed()
+    assert db_session.query(Response).count() == before, "refusal must change nothing"
+
+    # …and it can still be said explicitly.
+    seed_module.seed(force=True)
+    assert db_session.query(Response).count() == before
