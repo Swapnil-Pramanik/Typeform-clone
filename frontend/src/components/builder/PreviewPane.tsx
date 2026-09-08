@@ -10,7 +10,7 @@
  * the preview cannot drift from what a respondent will actually see.
  */
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { EditableChoiceList } from "@/components/builder/EditableChoiceList";
 import { EndingScreen } from "@/components/flow/EndingScreen";
@@ -21,7 +21,7 @@ import {
 } from "@/components/flow/FormStage";
 import { WelcomeScreen } from "@/components/flow/WelcomeScreen";
 import { QuestionRenderer } from "@/components/render/QuestionRenderer";
-import { PHONE } from "@/lib/device";
+import { FRAMES } from "@/lib/device";
 import { cn } from "@/lib/format";
 import { formSurface } from "@/lib/formTheme";
 import { isChoiceType } from "@/lib/questionTypes";
@@ -51,6 +51,33 @@ interface PreviewPaneProps {
   device?: ViewDevice;
 }
 
+/**
+ * How much of the frame fits in the pane, never magnified past life size.
+ *
+ * Measured with a ResizeObserver rather than the window, because the pane
+ * changes width on its own — the settings panel and the block list are both
+ * beside it.
+ */
+function useFitScale(frame: { width: number; height: number }) {
+  const area = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const node = area.current;
+    if (!node) return;
+    // ResizeObserver fires once on observe, so there is no separate first
+    // measurement to make — and none to make synchronously during the effect.
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setScale(Math.min(width / frame.width, height / frame.height, 1));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [frame.width, frame.height]);
+
+  return { area, scale };
+}
+
 function Canvas({
   children,
   theme,
@@ -63,48 +90,59 @@ function Canvas({
   device?: ViewDevice;
   placement?: "offset" | "centred";
 }) {
-  const mobile = device === "mobile";
+  const frame = FRAMES[device];
+  const { area, scale } = useFitScale(frame);
 
   return (
-    <div className="flex flex-1 items-center justify-center overflow-hidden bg-canvas p-6">
+    <div
+      ref={area}
+      className="flex flex-1 items-center justify-center overflow-hidden bg-canvas p-6"
+    >
+      {/* Holds the space the scaled frame occupies: a transform does not change
+          layout size, so without this the pane would centre the full 1440px. */}
       <div
-        /*
-          The card is the screen, not a card on it: full width on desktop, a
-          phone's width on mobile, filling the canvas either way. A compact box
-          in the middle of the pane was the wrong shape to preview in — it never
-          got wide enough to show the column offset a real desktop shows, so the
-          preview disagreed with the form it was previewing.
-
-          `text-ink` matters as much as the variables. Redefining `--tf-ink` here
-          only reaches elements that name the token; anything that simply
-          inherits its colour would still take `body`'s already-resolved value —
-          which in dark mode ghosted the choice labels against the form's own
-          light card. Setting the colour on the surface makes inheritance land
-          on the right value too.
-
-          `@container` makes the shared renderer's breakpoints measure this card
-          rather than the window behind it. No padding here: a container measures
-          its *content* box, so padding would shrink what the card reports its
-          width to be, and the card would claim to be narrower than it is.
-        */
-        className={cn(
-          "@container relative h-full overflow-hidden rounded-xl border border-line",
-          "bg-bg font-[family-name:var(--font-form)] text-ink shadow-sm",
-          mobile ? "max-w-full shrink-0" : "w-full",
-        )}
-        style={{
-          ...formSurface(theme),
-          ...(mobile ? { width: PHONE.width } : {}),
-        }}
+        className="shrink-0"
+        style={{ width: frame.width * scale, height: frame.height * scale }}
       >
-        <div className="tf-scrollbar absolute inset-0 overflow-y-auto">
-          <FormStage fill>
-            <div className={placement === "centred" ? STAGE_CENTRED : STAGE_OFFSET}>
-              <div className={placement === "centred" ? undefined : "max-w-2xl"}>
-                {children}
+        <div
+          /*
+            Rendered at real device size and scaled down, so this is a model of
+            a 1440px desktop rather than a narrow browser. A card merely sized
+            to the pane is about a thousand pixels wide, and the column offset
+            written for a desktop viewport then takes up the whole frame.
+
+            `text-ink` matters as much as the variables. Redefining `--tf-ink`
+            here only reaches elements that name the token; anything that simply
+            inherits its colour would still take `body`'s already-resolved value
+            — which in dark mode ghosted the choice labels against the form's
+            own light card. Setting the colour on the surface makes inheritance
+            land on the right value too.
+
+            `@container` makes the shared renderer's breakpoints measure this
+            frame. No padding here: a container measures its *content* box, so
+            padding would shrink what the frame reports its width to be.
+          */
+          className={cn(
+            "@container relative overflow-hidden rounded-xl border border-line",
+            "bg-bg font-[family-name:var(--font-form)] text-ink shadow-sm",
+          )}
+          style={{
+            ...formSurface(theme),
+            width: frame.width,
+            height: frame.height,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
+        >
+          <div className="tf-scrollbar absolute inset-0 overflow-y-auto">
+            <FormStage fill>
+              <div className={placement === "centred" ? STAGE_CENTRED : STAGE_OFFSET}>
+                <div className={placement === "centred" ? undefined : "max-w-2xl"}>
+                  {children}
+                </div>
               </div>
-            </div>
-          </FormStage>
+            </FormStage>
+          </div>
         </div>
       </div>
     </div>

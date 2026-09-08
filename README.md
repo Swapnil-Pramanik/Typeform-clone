@@ -1128,13 +1128,23 @@ this project does not have — and both looked convincing in the panel, which is
 exactly what made them worth deleting. History now starts empty, says so, and
 fills the moment anyone edits a form. Two tests hold that line.
 
-**15. The canvas is the screen, not a card on it.** The builder's preview pane
-fills its area — full width on desktop, a phone's width on mobile — and lays the
-block out through the same `FormStage` the respondent flow uses. A compact card
-in the middle of the pane was the wrong shape to preview in: it never got wide
-enough to cross the 1024px threshold, so it never showed the offset column a
-real desktop shows, and the preview quietly disagreed with the form it was
-previewing.
+**15. The canvas is a scale model of a screen, not a card on one.** The
+builder's preview renders at a real device size — 1440×900 or 390×760 — and
+scales the result down to fit the pane, laying the block out through the same
+`FormStage` the respondent flow uses.
+
+Two earlier shapes were both wrong. A compact card in the middle of the pane
+never got wide enough to cross the 1024px threshold, so it never showed the
+offset column a real desktop shows. Letting the card simply fill the pane fixed
+that but introduced a subtler version: at the ~1000px the pane actually offers,
+a layout written for a 1440px viewport eats the whole frame, and the preview
+looked cramped in a way the real form never does. Rendering at 1440 and scaling
+is the only shape that is proportionally honest — the question column measures
+443px from the left edge of the model and 446px on the live form.
+
+Clicks, focus and typing pass through a CSS transform unchanged, so editing in
+place still works at any scale — which was the one real risk in this approach and
+the reason it was worth checking in both frames before committing to it.
 
 That sharing is also what fixed the placement bug underneath it. Questions sit
 in a column starting about a quarter of the way across a wide screen; welcome,
