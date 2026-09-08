@@ -255,3 +255,46 @@ def test_display_settings_reach_the_respondent(client):
     )
     slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
     assert client.get(f"/api/f/{slug}").json()["settings"]["show_question_number"] is False
+
+
+def test_renaming_a_published_form_remints_its_link(client):
+    """The link should read like the form's current name, not its first one."""
+    form = client.post("/api/forms", json={"title": "Old name"}).json()
+    client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "short_text", "title": "Hello?"},
+    )
+    old_slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+    assert old_slug.startswith("old-name-")
+
+    renamed = client.patch(
+        f"/api/forms/{form['id']}", json={"title": "Brand new name"}
+    ).json()
+    assert renamed["slug"].startswith("brand-new-name-")
+    assert renamed["slug"] != old_slug
+
+    # The trade-off, asserted rather than assumed: the old link is gone.
+    assert client.get(f"/api/f/{old_slug}").status_code == 404
+    assert client.get(f"/api/f/{renamed['slug']}").status_code == 200
+
+
+def test_an_unpublished_form_gains_no_slug_from_a_rename(client):
+    """A slug is minted by publishing. Renaming a draft must not invent one."""
+    form = client.post("/api/forms", json={"title": "Draft"}).json()
+    assert form["slug"] is None
+    renamed = client.patch(f"/api/forms/{form['id']}", json={"title": "Still a draft"}).json()
+    assert renamed["slug"] is None
+
+
+def test_editing_something_other_than_the_title_keeps_the_link(client):
+    form = client.post("/api/forms", json={"title": "Keep me"}).json()
+    client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "short_text", "title": "Hello?"},
+    )
+    slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+
+    patched = client.patch(
+        f"/api/forms/{form['id']}", json={"theme": {"color": "#123456"}}
+    ).json()
+    assert patched["slug"] == slug

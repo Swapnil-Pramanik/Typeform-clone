@@ -137,10 +137,27 @@ def create_form(db: Session, payload: FormCreate) -> FormOut:
 
 
 def update_form(db: Session, form_id: int, payload: FormUpdate) -> FormOut:
-    """Apply a partial update. This is what the builder's autosave calls."""
+    """Apply a partial update. This is what the builder's autosave calls.
+
+    Renaming a form that already has a slug re-mints it, so the public link
+    reads like the form's current name rather than the name it happened to have
+    when it was first published.
+
+    The cost is real and worth stating: the previous link stops working. There
+    is no redirect from the old slug, so anything already shared — a message, a
+    QR code, an email — points at a 404 after a rename. Keeping both alive would
+    need a table of retired slugs, which is not built.
+    """
     form = load_form_or_raise(db, form_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    data = payload.model_dump(exclude_unset=True)
+    renamed = "title" in data and data["title"] != form.title
+
+    for field, value in data.items():
         setattr(form, field, value)
+
+    if renamed and form.slug:
+        form.slug = _unique_slug(db, form.title)
+
     db.commit()
     record_version(db, form)
     return get_form(db, form_id)

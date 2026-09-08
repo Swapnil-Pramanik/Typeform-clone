@@ -656,7 +656,7 @@ Interactive docs at `/docs` when the backend is running.
 | `GET` | `/api/forms` | Dashboard list: status, question count, response count, completed count. Optional `?search=`. |
 | `POST` | `/api/forms` | Create a draft (with one ending block, as the real app does). |
 | `GET` | `/api/forms/{id}` | Full form + live questions + options, for the builder. |
-| `PATCH` | `/api/forms/{id}` | Rename, theme, welcome screen, settings, open/closed — the target of the autosave and of the settings dialog. |
+| `PATCH` | `/api/forms/{id}` | Rename, theme, welcome screen, settings, open/closed — the target of the autosave and of the settings dialog. A rename re-mints the slug. |
 | `DELETE` | `/api/forms/{id}` | Delete the form; questions, options, responses and answers cascade. |
 | `POST` | `/api/forms/{id}/duplicate` | Deep-copy questions and options into a new draft. Responses are never copied. |
 | `POST` | `/api/forms/{id}/publish` | Mint a slug (once) and go live. `400` if the form has no answerable question. |
@@ -1002,6 +1002,9 @@ invariant the design rests on rather than one function:
 | `test_a_number_question_reports_only_the_values_answered` | No scale to fill in, so it lists what actually came back. |
 | `test_the_partial_route_takes_a_beacons_content_type` | `sendBeacon` cannot preflight, so its `text/plain` body has to be accepted somewhere. |
 | `test_the_partial_route_cannot_record_a_completed_response` | A route reachable without a preflight must not be able to lie about completion. |
+| `test_renaming_a_published_form_remints_its_link` | The link follows the name — and the old one really is gone. |
+| `test_an_unpublished_form_gains_no_slug_from_a_rename` | A slug is minted by publishing; renaming a draft must not invent one. |
+| `test_editing_something_other_than_the_title_keeps_the_link` | Only a rename touches the slug. |
 | `test_always_skips_the_next_question_whatever_the_answer` | "Always go to" takes the block off the path, so its required flag cannot block. |
 | `test_conditional_rules_outrank_the_always_rule_below_them` | List order really is precedence: the catch-all only fires once the others decline. |
 | `test_always_replaces_the_fall_through_rather_than_racing_it` | The cycle checker stops believing in an edge the always rule removed. |
@@ -1396,3 +1399,23 @@ meant for questions and sat left of centre on every desktop — in the preview a
 on the real public form alike. Placement is now a property of the block type,
 named once.
 
+**21. Renaming re-mints the link, and that has a cost.**
+A form's public slug is derived from its title, so renaming a published form
+gives it a link that reads like its current name instead of the name it happened
+to have when it was first published.
+
+The trade-off is real and worth stating rather than discovering: **there is no
+redirect from the old slug**, so anything already shared — a message, an email,
+a QR code — points at a 404 after a rename. Keeping both alive would need a
+table of retired slugs, which is not built. The rename toast says so in words,
+and a test asserts the old link is genuinely gone rather than assuming it.
+
+Unpublishing is the opposite case and behaves the opposite way: the slug is
+kept, so a form taken offline and republished keeps the link it had.
+
+Naming also moved to the front of creation. A form is named in a dialog before
+it exists, rather than being created as "Untitled form" and renamed later, which
+is how a workspace ends up with three of them. Both dialogs are the app's own —
+`window.prompt` drew the old one in the browser's chrome, with the wrong
+typeface, the wrong buttons and, in some browsers, the option to suppress it
+entirely.

@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/Button";
 import { ComingSoon } from "@/components/ui/ComingSoon";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
+import { PromptModal } from "@/components/ui/PromptModal";
 import { LoadingPane } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { copyText } from "@/lib/clipboard";
@@ -45,6 +46,8 @@ export default function DashboardPage() {
   // Two values: what the box shows, and what the server is asked for 300ms
   // after typing stops. One request per keystroke was ~150ms of round trip
   // each, and the answers could land out of order.
+  const [creating, setCreating] = useState(false);
+  const [renaming, setRenaming] = useState<FormSummary | null>(null);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const runSearch = useDebouncedCallback<string>(setQuery, 300);
@@ -87,9 +90,13 @@ export default function DashboardPage() {
   const responsesCollected =
     forms?.reduce((total, form) => total + form.response_count, 0) ?? 0;
 
-  const create = () =>
+  // Naming happens before the form exists, not after. A form called "Untitled
+  // form" until someone remembers to rename it is how a workspace fills up with
+  // three of them.
+  const create = (title: string) =>
     run(async () => {
-      const form = await actions.create.mutateAsync("Untitled form");
+      setCreating(false);
+      const form = await actions.create.mutateAsync(title);
       router.push(`/forms/${form.id}/create`);
     });
 
@@ -106,12 +113,20 @@ export default function DashboardPage() {
       );
     });
 
-  const rename = (form: FormSummary) =>
+  const rename = (title: string) =>
     run(async () => {
-      const title = window.prompt("Rename form", form.title);
-      if (!title || title === form.title) return;
-      await actions.rename.mutateAsync({ id: form.id, title });
-      toast.show("Renamed", "success");
+      const form = renaming;
+      setRenaming(null);
+      if (!form || title === form.title) return;
+      const updated = await actions.rename.mutateAsync({ id: form.id, title });
+      toast.show(
+        // The link is re-minted with the name, so anything already shared now
+        // points at nothing. Better said out loud than discovered.
+        updated.slug && form.slug && updated.slug !== form.slug
+          ? "Renamed. The public link changed, so older links no longer work."
+          : "Renamed",
+        "success",
+      );
     });
 
   const duplicate = (form: FormSummary) =>
@@ -152,7 +167,7 @@ export default function DashboardPage() {
               setSearch(value);
               runSearch(value);
             }}
-            onCreate={() => void create()}
+            onCreate={() => setCreating(true)}
             creating={actions.create.isPending}
             responsesCollected={responsesCollected}
             formCount={forms?.length ?? 0}
@@ -201,14 +216,14 @@ export default function DashboardPage() {
                     />
                   </div>
                 ) : sorted.length === 0 ? (
-                  <EmptyWorkspace onCreate={() => void create()} />
+                  <EmptyWorkspace onCreate={() => setCreating(true)} />
                 ) : (
                   <div className="p-6">
                     <FormTable
                       forms={sorted}
                       layout={layout}
                       onCopyLink={(form) => void copyLink(form)}
-                      onRename={(form) => void rename(form)}
+                      onRename={setRenaming}
                       onDuplicate={(form) => void duplicate(form)}
                       onDelete={setPendingDelete}
                     />
@@ -219,6 +234,28 @@ export default function DashboardPage() {
           </main>
         </div>
       </div>
+
+      <PromptModal
+        open={creating}
+        title="Create a form"
+        label="What should this form be called?"
+        placeholder="Customer feedback"
+        confirmLabel="Create form"
+        pending={actions.create.isPending}
+        onCancel={() => setCreating(false)}
+        onConfirm={(title) => void create(title)}
+      />
+
+      <PromptModal
+        open={Boolean(renaming)}
+        title="Rename form"
+        label="Form name"
+        initialValue={renaming?.title ?? ""}
+        confirmLabel="Rename"
+        pending={actions.rename.isPending}
+        onCancel={() => setRenaming(null)}
+        onConfirm={(title) => void rename(title)}
+      />
 
       <Modal
         open={Boolean(pendingDelete)}
