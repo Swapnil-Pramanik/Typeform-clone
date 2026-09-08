@@ -456,6 +456,13 @@ CREATE TABLE forms (
 );
 CREATE UNIQUE INDEX ix_forms_slug ON forms (slug);
 
+CREATE TABLE form_slug_aliases (            -- links this form used to answer on
+  slug        VARCHAR(64) PRIMARY KEY,
+  form_id     INTEGER NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
+  retired_at  DATETIME NOT NULL
+);
+CREATE INDEX ix_form_slug_aliases_form ON form_slug_aliases (form_id);
+
 CREATE TABLE questions (
   id           INTEGER PRIMARY KEY,
   form_id      INTEGER NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
@@ -1005,6 +1012,10 @@ invariant the design rests on rather than one function:
 | `test_renaming_a_published_form_remints_its_link` | The link follows the name — and the old one really is gone. |
 | `test_an_unpublished_form_gains_no_slug_from_a_rename` | A slug is minted by publishing; renaming a draft must not invent one. |
 | `test_editing_something_other_than_the_title_keeps_the_link` | Only a rename touches the slug. |
+| `test_every_old_link_keeps_working_through_repeated_renames` | Rename three times; all four links resolve, all report the live slug. |
+| `test_a_retired_slug_still_accepts_a_submission` | Someone mid-form when a rename lands can still finish. |
+| `test_a_retired_slug_is_never_handed_to_another_form` | The suffix is pinned to force a collision; minting must skip it. |
+| `test_deleting_a_form_takes_its_retired_links_with_it` | Aliases cascade, so a deleted form's old links 404 again. |
 | `test_always_skips_the_next_question_whatever_the_answer` | "Always go to" takes the block off the path, so its required flag cannot block. |
 | `test_conditional_rules_outrank_the_always_rule_below_them` | List order really is precedence: the catch-all only fires once the others decline. |
 | `test_always_replaces_the_fall_through_rather_than_racing_it` | The cycle checker stops believing in an edge the always rule removed. |
@@ -1399,19 +1410,31 @@ meant for questions and sat left of centre on every desktop — in the preview a
 on the real public form alike. Placement is now a property of the block type,
 named once.
 
-**21. Renaming re-mints the link, and that has a cost.**
+**21. Renaming re-mints the link, and every old one still works.**
 A form's public slug is derived from its title, so renaming a published form
-gives it a link that reads like its current name instead of the name it happened
-to have when it was first published.
+gives it a link that reads like its current name rather than the name it
+happened to have when it was first published.
 
-The trade-off is real and worth stating rather than discovering: **there is no
-redirect from the old slug**, so anything already shared — a message, an email,
-a QR code — points at a 404 after a rename. Keeping both alive would need a
-table of retired slugs, which is not built. The rename toast says so in words,
-and a test asserts the old link is genuinely gone rather than assuming it.
+The obvious cost is that everything already shared — a message, an email, a QR
+code — would point at a 404. So the old slug is *retired* rather than discarded:
+`form_slug_aliases` keeps it, `get_published_form` falls back to it, and the
+form comes back carrying its **current** slug. The public page compares the two
+and redirects, so an old link lands on the live address instead of serving the
+same form at two URLs.
 
-Unpublishing is the opposite case and behaves the opposite way: the slug is
-kept, so a form taken offline and republished keeps the link it had.
+Three consequences worth stating:
+
+- A retired slug counts as taken when minting a new one, so a link can only ever
+  resolve to the form it was minted for. The test pins the random suffix to
+  force the collision rather than hoping for one.
+- A submission posted to a retired slug is accepted, so someone mid-form when a
+  rename lands can still finish.
+- Aliases cascade with the form, so deleting a form takes its old links with it
+  and they 404 again.
+
+The fallback query runs only on a miss, so a live link is still one round trip.
+Unpublishing is a different case and behaves differently: the slug is kept
+outright, so a form taken offline and republished keeps the link it had.
 
 Naming also moved to the front of creation. A form is named in a dialog before
 it exists, rather than being created as "Untitled form" and renamed later, which

@@ -273,8 +273,11 @@ def test_renaming_a_published_form_remints_its_link(client):
     assert renamed["slug"].startswith("brand-new-name-")
     assert renamed["slug"] != old_slug
 
-    # The trade-off, asserted rather than assumed: the old link is gone.
-    assert client.get(f"/api/f/{old_slug}").status_code == 404
+    # The old link still resolves, and answers with the *current* slug — which
+    # is what lets the public page redirect a shared link to the live one.
+    retired = client.get(f"/api/f/{old_slug}")
+    assert retired.status_code == 200
+    assert retired.json()["slug"] == renamed["slug"]
     assert client.get(f"/api/f/{renamed['slug']}").status_code == 200
 
 
@@ -298,3 +301,84 @@ def test_editing_something_other_than_the_title_keeps_the_link(client):
         f"/api/forms/{form['id']}", json={"theme": {"color": "#123456"}}
     ).json()
     assert patched["slug"] == slug
+
+
+def test_every_old_link_keeps_working_through_repeated_renames(client):
+    """Rename three times and all four links still reach the form."""
+    form = client.post("/api/forms", json={"title": "One"}).json()
+    client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "short_text", "title": "Hello?"},
+    )
+    slugs = [client.post(f"/api/forms/{form['id']}/publish").json()["slug"]]
+
+    for name in ("Two", "Three", "Four"):
+        slugs.append(client.patch(f"/api/forms/{form['id']}", json={"title": name}).json()["slug"])
+
+    assert len(set(slugs)) == 4, "each rename should mint a new link"
+    for slug in slugs:
+        answer = client.get(f"/api/f/{slug}")
+        assert answer.status_code == 200, slug
+        assert answer.json()["slug"] == slugs[-1], "always points at the live one"
+
+
+def test_a_retired_slug_still_accepts_a_submission(client):
+    """Someone mid-form when the rename lands must still be able to finish."""
+    form = client.post("/api/forms", json={"title": "Before"}).json()
+    question = client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "short_text", "title": "Name?"},
+    ).json()
+    old_slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+    client.patch(f"/api/forms/{form['id']}", json={"title": "After"})
+
+    sent = client.post(
+        f"/api/f/{old_slug}/responses",
+        json={"answers": [{"question_id": question["id"], "value": "Ada"}]},
+    )
+    assert sent.status_code == 200, sent.text
+    assert client.get(f"/api/forms/{form['id']}/responses").json()["total"] == 1
+
+
+def test_a_retired_slug_is_never_handed_to_another_form(client, db_session, monkeypatch):
+    """A link must only ever resolve to the form it was minted for.
+
+    Forced rather than hoped for: the random suffix is pinned so the next mint
+    would land exactly on a retired slug, and the generator has to skip it.
+    """
+    import app.services.forms as forms_service
+    from app.models import FormSlugAlias
+
+    form = client.post("/api/forms", json={"title": "Shared name"}).json()
+    client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "short_text", "title": "Hello?"},
+    )
+    client.post(f"/api/forms/{form['id']}/publish")
+    db_session.add(FormSlugAlias(slug="shared-name-aaaa", form_id=form["id"]))
+    db_session.commit()
+
+    suffixes = iter(["aaaa", "bbbb"])
+    monkeypatch.setattr(
+        forms_service.secrets, "token_hex", lambda n: next(suffixes)
+    )
+    minted = forms_service._unique_slug(db_session, "Shared name")
+
+    assert minted == "shared-name-bbbb", "it must skip the retired slug"
+
+
+def test_deleting_a_form_takes_its_retired_links_with_it(client, db_session):
+    from app.models import FormSlugAlias
+
+    form = client.post("/api/forms", json={"title": "Doomed"}).json()
+    client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "short_text", "title": "Hello?"},
+    )
+    old_slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+    client.patch(f"/api/forms/{form['id']}", json={"title": "Still doomed"})
+    assert db_session.query(FormSlugAlias).filter_by(slug=old_slug).count() == 1
+
+    client.delete(f"/api/forms/{form['id']}")
+    assert db_session.query(FormSlugAlias).filter_by(slug=old_slug).count() == 0
+    assert client.get(f"/api/f/{old_slug}").status_code == 404

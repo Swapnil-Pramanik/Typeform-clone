@@ -120,10 +120,11 @@ export default function DashboardPage() {
       if (!form || title === form.title) return;
       const updated = await actions.rename.mutateAsync({ id: form.id, title });
       toast.show(
-        // The link is re-minted with the name, so anything already shared now
-        // points at nothing. Better said out loud than discovered.
+        // The link is re-minted with the name. Old links are retired rather
+        // than dropped — they redirect here — but the address people see does
+        // change, which is worth saying.
         updated.slug && form.slug && updated.slug !== form.slug
-          ? "Renamed. The public link changed, so older links no longer work."
+          ? "Renamed. The link changed; older links redirect here."
           : "Renamed",
         "success",
       );

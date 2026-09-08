@@ -200,3 +200,26 @@ class FormVersion(Base):
     snapshot: Mapped[dict] = mapped_column(JSONText, nullable=False)
 
     __table_args__ = (Index("ix_form_versions_form", "form_id", "created_at"),)
+
+
+class FormSlugAlias(Base):
+    """A public link a form used to answer on.
+
+    Renaming a form re-mints its slug so the link reads like its current name.
+    Without this table the previous link would simply 404, taking every message,
+    email and QR code already sent with it — so the old slug is retired here
+    instead of discarded, and the public route still resolves it.
+
+    A retired slug is never reused for a different form: `_unique_slug` checks
+    this table too, so a link can only ever point at the form it was minted for.
+    """
+
+    __tablename__ = "form_slug_aliases"
+
+    slug: Mapped[str] = mapped_column(String(64), primary_key=True)
+    form_id: Mapped[int] = mapped_column(
+        ForeignKey("forms.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    retired_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=utcnow, server_default=func.now()
+    )

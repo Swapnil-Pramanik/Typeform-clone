@@ -7,7 +7,14 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Form, FormStatus, Question, QuestionOption, Response
+from app.models import (
+    Form,
+    FormSlugAlias,
+    FormStatus,
+    Question,
+    QuestionOption,
+    Response,
+)
 from app.schemas import FormCreate, FormOut, FormSummaryOut, FormUpdate
 from app.services.logic import LogicError, assert_no_cycles
 from app.services.versions import record_version
@@ -34,8 +41,14 @@ def _unique_slug(db: Session, title: str) -> str:
     base = _slugify(title)
     while True:
         candidate = f"{base}-{secrets.token_hex(SLUG_SUFFIX_LENGTH // 2)}"
-        exists = db.scalar(select(Form.id).where(Form.slug == candidate))
-        if not exists:
+        # Retired slugs count as taken. A link must only ever resolve to the
+        # form it was minted for, so one can never be handed to a second form.
+        taken = db.scalar(
+            select(Form.id).where(Form.slug == candidate)
+        ) or db.scalar(
+            select(FormSlugAlias.form_id).where(FormSlugAlias.slug == candidate)
+        )
+        if not taken:
             return candidate
 
 
@@ -156,6 +169,9 @@ def update_form(db: Session, form_id: int, payload: FormUpdate) -> FormOut:
         setattr(form, field, value)
 
     if renamed and form.slug:
+        # Retire the old link rather than dropping it, so everything already
+        # shared still resolves — the public route redirects it to the new one.
+        db.merge(FormSlugAlias(slug=form.slug, form_id=form.id))
         form.slug = _unique_slug(db, form.title)
 
     db.commit()
@@ -248,14 +264,33 @@ def get_published_form(db: Session, slug: str) -> Form:
 
     A draft is indistinguishable from a missing form here on purpose: the public
     surface must not leak the existence of unpublished work.
+
+    A slug the form used to answer on resolves too. Renaming re-mints the link,
+    and everything already shared still points at the old one — so the retired
+    slug is looked up as a fallback, and the form comes back carrying its
+    *current* slug, which is what lets the public page redirect to it.
+
+    The fallback costs a second query only on the miss, so a live link is still
+    one round trip.
     """
-    form = db.scalar(
-        select(Form)
-        .where(Form.slug == slug, Form.status == FormStatus.PUBLISHED)
-        .options(selectinload(Form.questions).selectinload(Question.options),
-            selectinload(Form.questions).selectinload(Question.rules))
-        .execution_options(populate_existing=True)
-    )
+    def published(where):
+        return db.scalar(
+            select(Form)
+            .where(where, Form.status == FormStatus.PUBLISHED)
+            .options(
+                selectinload(Form.questions).selectinload(Question.options),
+                selectinload(Form.questions).selectinload(Question.rules),
+            )
+            .execution_options(populate_existing=True)
+        )
+
+    form = published(Form.slug == slug)
+    if form is None:
+        retired = db.scalar(
+            select(FormSlugAlias.form_id).where(FormSlugAlias.slug == slug)
+        )
+        if retired is not None:
+            form = published(Form.id == retired)
     if form is None:
         raise FormError("Form not found.")
     return form

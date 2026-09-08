@@ -1,6 +1,13 @@
 """SQLAlchemy models. Importing this package registers every table on ``Base``."""
 
-from app.models.form import Form, FormVersion, Question, QuestionOption, QuestionRule
+from app.models.form import (
+    Form,
+    FormSlugAlias,
+    FormVersion,
+    Question,
+    QuestionOption,
+    QuestionRule,
+)
 from app.models.response import Answer, Response
 from app.models.types import (
     ANSWERABLE_TYPES,
@@ -17,6 +24,7 @@ __all__ = [
     "CHOICE_TYPES",
     "Answer",
     "Form",
+    "FormSlugAlias",
     "FormStatus",
     "FormVersion",
     "JSONText",
