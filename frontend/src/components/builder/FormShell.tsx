@@ -10,12 +10,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useToast } from "@/components/ui/Toast";
+import { copyText } from "@/lib/clipboard";
 import {
   ChevronRight,
   Help,
@@ -52,24 +53,49 @@ interface FormShellProps {
 export function FormShell({ formId, headerSlot, toolbar, children }: FormShellProps) {
   const pathname = usePathname();
   const { data: form } = useFormQuery(formId);
-  const { publish, unpublish } = useFormActions();
+  const { publish } = useFormActions();
   const toast = useToast();
   const comingSoon = useComingSoon();
 
   const published = form?.status === "published";
+  const [origin] = useState(() =>
+    typeof window === "undefined" ? "" : window.location.origin,
+  );
 
-  const onPublishToggle = async () => {
+  /**
+   * Publish, or re-publish. Never the reverse.
+   *
+   * This used to toggle: on a published form the "Publish edits" button took
+   * the form *offline*, which is the opposite of what it says. Taking a live
+   * form down is not something a button labelled Publish should ever do by
+   * accident, so unpublishing moved to the Share tab where the live/draft state
+   * is spelled out.
+   *
+   * On an already-published form this re-validates the rules and marks the
+   * moment in the form's history. Edits themselves are live as soon as the
+   * autosave lands — see the README's assumption 18.
+   */
+  const onPublish = async () => {
     try {
-      if (published) {
-        await unpublish.mutateAsync(formId);
-        toast.show("Form unpublished. The link stops working until you republish.");
-      } else {
-        const updated = await publish.mutateAsync(formId);
-        toast.show(`Published to /f/${updated.slug}`, "success");
-      }
+      const updated = await publish.mutateAsync(formId);
+      toast.show(
+        published
+          ? `Your changes are live at /f/${updated.slug}`
+          : `Published to /f/${updated.slug}`,
+        "success",
+      );
     } catch (error) {
       toast.show(error instanceof Error ? error.message : "Could not publish.", "error");
     }
+  };
+
+  const copyLink = async () => {
+    if (!form?.slug) return;
+    const copied = await copyText(`${origin}/f/${form.slug}`);
+    toast.show(
+      copied ? "Link copied" : "Could not copy the link.",
+      copied ? "success" : "error",
+    );
   };
 
   return (
@@ -124,23 +150,23 @@ export function FormShell({ formId, headerSlot, toolbar, children }: FormShellPr
           <Button
             size="sm"
             variant="secondary"
-            onClick={onPublishToggle}
-            disabled={publish.isPending || unpublish.isPending}
+            onClick={() => void onPublish()}
+            disabled={publish.isPending}
           >
             <Play width={13} height={13} />
             {published ? "Publish edits" : "Publish"}
           </Button>
 
           {published && form?.slug ? (
-            <Link
-              href={`/f/${form.slug}`}
-              target="_blank"
-              title="Open the public form"
-              aria-label="Open the public form"
+            <button
+              type="button"
+              onClick={() => void copyLink()}
+              title="Copy the public link"
+              aria-label="Copy the public link"
               className="rounded-lg p-2 text-ink-muted hover:bg-muted hover:text-ink"
             >
               <LinkIcon width={17} height={17} />
-            </Link>
+            </button>
           ) : (
             <button
               type="button"

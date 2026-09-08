@@ -31,6 +31,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { LoadingPane } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import { copyText } from "@/lib/clipboard";
 import { errorMessage } from "@/lib/errors";
 import { useFormActions, useForms } from "@/lib/queries";
 import type { FormSummary } from "@/types";
@@ -92,10 +93,11 @@ export default function DashboardPage() {
         toast.show("Publish the form first to get a link.", "error");
         return;
       }
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/f/${form.slug}`,
+      const copied = await copyText(`${window.location.origin}/f/${form.slug}`);
+      toast.show(
+        copied ? "Link copied" : "Could not copy the link.",
+        copied ? "success" : "error",
       );
-      toast.show("Link copied", "success");
     });
 
   const rename = (form: FormSummary) =>

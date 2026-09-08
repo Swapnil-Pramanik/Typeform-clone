@@ -11,7 +11,8 @@ import { ComingSoon } from "@/components/ui/ComingSoon";
 import { Copy, Eye, Link as LinkIcon } from "@/components/ui/icons";
 import { LoadingPane } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
-import { useFormQuery } from "@/lib/queries";
+import { copyText } from "@/lib/clipboard";
+import { useFormActions, useFormQuery } from "@/lib/queries";
 
 export default function SharePage({
   params,
@@ -21,6 +22,7 @@ export default function SharePage({
   const formId = Number(use(params).id);
   const { data: form, isLoading } = useFormQuery(formId);
   const toast = useToast();
+  const { publish, unpublish } = useFormActions();
   const [origin] = useState(() =>
     typeof window === "undefined" ? "" : window.location.origin,
   );
@@ -28,10 +30,30 @@ export default function SharePage({
   const url = form?.slug ? `${origin}/f/${form.slug}` : null;
   const live = form?.status === "published";
 
+  const toggleLive = async () => {
+    try {
+      if (live) {
+        await unpublish.mutateAsync(formId);
+        toast.show("Form unpublished. The link stops working until you publish again.");
+      } else {
+        const updated = await publish.mutateAsync(formId);
+        toast.show(`Published to /f/${updated.slug}`, "success");
+      }
+    } catch (error) {
+      toast.show(
+        error instanceof Error ? error.message : "Could not change this form.",
+        "error",
+      );
+    }
+  };
+
   const copy = async () => {
     if (!url) return;
-    await navigator.clipboard.writeText(url);
-    toast.show("Link copied", "success");
+    const copied = await copyText(url);
+    toast.show(
+      copied ? "Link copied" : "Could not copy the link.",
+      copied ? "success" : "error",
+    );
   };
 
   return (
@@ -73,6 +95,32 @@ export default function SharePage({
                   A link is generated the first time you publish. It is kept
                   afterwards, so unpublishing and republishing never breaks it.
                 </p>
+              )}
+
+              {/*
+                Unpublishing lives here rather than in the header. It used to be
+                the second half of a toggle behind the Publish button, which
+                meant a button reading "Publish edits" took the form offline.
+                Taking a live form down is a deliberate act and belongs beside
+                the sentence that says whether it is live.
+              */}
+              {url && (
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+                  <p className="text-[13px] text-ink-muted">
+                    {live
+                      ? "Stop accepting new visitors? The link keeps working once you publish again."
+                      : "The link is dormant until you publish this form again."}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={publish.isPending || unpublish.isPending}
+                    onClick={() => void toggleLive()}
+                    className={live ? "text-danger" : undefined}
+                  >
+                    {live ? "Unpublish" : "Publish again"}
+                  </Button>
+                </div>
               )}
             </section>
 

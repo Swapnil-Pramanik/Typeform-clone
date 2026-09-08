@@ -330,6 +330,7 @@ drift from what a respondent sees.
         │   ├── formTheme.ts                  # a form's theme as token overrides
         │   ├── formModes.ts                  # the four form modes, named once
         │   ├── device.ts                     # the phone the builder previews in
+        │   ├── clipboard.ts                  # copy, and say whether it worked
         │   ├── logic.ts                      # mirror of services/logic.py
         │   ├── creator.ts                    # the single seeded creator
         │   ├── errors.ts                     # one place that names a failure
@@ -1195,6 +1196,24 @@ simple enough not to earn a dependency, and every one takes its colours from the
 token layer so the panel themes like everything else — the first thing a chart
 library takes away. They animate from empty on mount and hold still under
 `prefers-reduced-motion`.
+
+**18. Publishing never unpublishes, and edits are live before you press it.**
+The builder's autosave writes to the same row the public page reads, so a change
+to a published form is live the moment the save lands. There is no staged draft
+to promote.
+
+That leaves *Publish edits* with a real but narrower job: it re-validates the
+form — the rules still have to be loop-free, and the form still has to have an
+answerable question — and marks the moment in the version history. What it does
+not do is take the form down. It used to: the button was a publish/unpublish
+toggle wearing the label of the real product's button, so pressing "Publish
+edits" on a live form unpublished it. Unpublishing now lives on the Share tab,
+beside the sentence that says whether the form is live, because taking a form
+offline is a deliberate act rather than the far half of a toggle.
+
+A proper staged draft — the public page serving the last published snapshot
+while the builder edits a newer one — is the honest version of this, and
+`form_versions` already stores what it would need. It is not built.
 
 
 
