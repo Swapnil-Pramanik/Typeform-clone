@@ -63,7 +63,7 @@ conversational flow.
 | | `prefers-reduced-motion` honoured | Built |
 | **Results** | Responses table: search, sort, bulk delete, single-response view | Built |
 | | Derived columns — response type, and the ending each submission reached | Built |
-| | Per-question aggregates computed by the database | Built |
+| | Per-question aggregates computed by the database, drawn per question type | Built |
 | | Completion rate from partial responses | Built |
 | | CSV export (streaming) | Built |
 | **Dashboard** | List/grid views, search, sort, row menu, delete confirmation | Built |
@@ -316,7 +316,8 @@ drift from what a respondent sees.
         │   │   ├── FormThumbnail.tsx  EmptyWorkspace.tsx  ComingSoonButton.tsx
         │   ├── results/
         │   │   ├── ResponsesTable.tsx
-        │   │   ├── ResultsToolbar.tsx  ResponseDetail.tsx  SummaryPanel.tsx
+        │   │   ├── ResultsToolbar.tsx
+        │   │   ├── charts.tsx                  # ring, donut, histogram, ranked bars  ResponseDetail.tsx  SummaryPanel.tsx
         │   └── ui/
         │       ├── Button.tsx  Modal.tsx  Toast.tsx  Spinner.tsx
         │       ├── Dropdown.tsx  InlineText.tsx  EmptyState.tsx  ComingSoon.tsx
@@ -663,7 +664,7 @@ Interactive docs at `/docs` when the backend is running.
 | `GET` | `/api/forms/{id}/responses` | Paginated submissions (`page`, `page_size`, `search`, `sort`). Each row carries the ending it reached. |
 | `POST` | `/api/forms/{id}/responses/delete` | Delete the selected submissions. Scoped to the form. |
 | `GET` | `/api/responses/{id}` | One submission in full. |
-| `GET` | `/api/forms/{id}/summary` | Per-question aggregates + completion rate. |
+| `GET` | `/api/forms/{id}/summary` | Per-question aggregates, numeric distributions and completion rate. |
 | `GET` | `/api/forms/{id}/responses.csv` | Streaming CSV export. |
 | `GET` | `/api/forms/{id}/versions` | Version history, newest first. The snapshots stay server-side. |
 | `POST` | `/api/forms/{id}/versions/{vid}/restore` | Roll the form back to that version. Recorded, so it can be undone. |
@@ -991,6 +992,8 @@ invariant the design rests on rather than one function:
 | `test_bulk_delete_removes_only_what_was_selected` | The checkbox column deletes what was ticked and nothing else. |
 | `test_delete_cannot_reach_another_form` | A stale page cannot delete another form's data by guessing IDs. |
 | `test_each_row_carries_the_ending_it_reached` | The Ending column has something to show. |
+| `test_a_rating_distribution_keeps_its_empty_buckets` | "Nobody gave us a 1" is information a histogram must not hide. |
+| `test_a_number_question_reports_only_the_values_answered` | No scale to fill in, so it lists what actually came back. |
 | `test_always_skips_the_next_question_whatever_the_answer` | "Always go to" takes the block off the path, so its required flag cannot block. |
 | `test_conditional_rules_outrank_the_always_rule_below_them` | List order really is precedence: the catch-all only fires once the others decline. |
 | `test_always_replaces_the_fall_through_rather_than_racing_it` | The cycle checker stops believing in an edge the always rule removed. |
@@ -1174,6 +1177,25 @@ fourteen requests for a seven-letter word, and they could land out of order. Bul
 DELETE per row, because the IDs come from a checkbox column: one round trip per
 row would let a bulk delete half-fail in a way the table could not show. It is
 scoped to the form, so a stale page cannot reach another form's data by guessing.
+
+**17. Each question in the summary is drawn the way its own type reads.** A
+rating becomes a histogram over its whole scale, a yes/no a donut, a choice list
+ranked bars, open text the verbatims themselves. Colour comes from the same
+block palette as that question's icon everywhere else, so a card is
+recognisable before it is read.
+
+The scale keeps its empty buckets. "Nobody gave us a 1" is a finding, and a
+histogram that closed the gap would hide it — which is why `distribution` is
+built server-side from the question's `max_rating` rather than from the values
+that happen to have been answered. A number question has no scale to fill in, so
+it reports only what came back.
+
+Four SVG shapes and some divs rather than a charting library. The figures are
+simple enough not to earn a dependency, and every one takes its colours from the
+token layer so the panel themes like everything else — the first thing a chart
+library takes away. They animate from empty on mount and hold still under
+`prefers-reduced-motion`.
+
 
 
 That sharing is also what fixed the placement bug underneath it. Questions sit

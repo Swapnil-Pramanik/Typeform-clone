@@ -20,6 +20,7 @@ from app.schemas import (
     ChoiceCount,
     FormSummaryStats,
     QuestionStats,
+    ValueCount,
     ResponseOut,
     ResponsePage,
     SubmissionIn,
@@ -27,7 +28,11 @@ from app.schemas import (
 )
 from app.services.forms import FormClosedError, FormError, load_form_or_raise
 from app.services.logic import next_question_id, path_taken
-from app.services.validation import AnswerValidationError, validate_answer
+from app.services.validation import (
+    DEFAULT_MAX_RATING,
+    AnswerValidationError,
+    validate_answer,
+)
 
 #: How many verbatims the summary shows for free-text questions.
 TEXT_SAMPLE_LIMIT = 5
@@ -294,7 +299,9 @@ def summarize_form(db: Session, form_id: int) -> FormSummaryStats:
         )
 
     answered = _answered_counts(db, ids)
-    numeric = _numeric_stats(db, _ids_of(questions, {QuestionType.RATING, QuestionType.NUMBER}))
+    numeric_ids = _ids_of(questions, {QuestionType.RATING, QuestionType.NUMBER})
+    numeric = _numeric_stats(db, numeric_ids)
+    spread = _numeric_distribution(db, numeric_ids)
     booleans = _yes_no_counts(db, _ids_of(questions, {QuestionType.YES_NO}))
     chosen = _choice_counts(db, _ids_of(questions, CHOICE_TYPES))
     samples = _text_samples(db, _ids_of(questions, TEXT_TYPES))
@@ -314,6 +321,7 @@ def summarize_form(db: Session, form_id: int) -> FormSummaryStats:
             entry.average = round(average, 2) if average is not None else None
             entry.minimum = low
             entry.maximum = high
+            entry.distribution = _buckets(question, qtype, spread.get(question.id, {}))
         elif qtype is QuestionType.YES_NO:
             counts = booleans.get(question.id, {})
             entry.choices = [
@@ -369,6 +377,42 @@ def _numeric_stats(
         .group_by(Answer.question_id)
     ).all()
     return {question_id: (avg, low, high) for question_id, avg, low, high in rows}
+
+
+def _numeric_distribution(db: Session, ids: list[int]) -> dict[int, dict[float, int]]:
+    """How many answers landed on each value, for every numeric question at once."""
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(Answer.question_id, Answer.number_value, func.count(Answer.id))
+        .where(Answer.question_id.in_(ids), Answer.number_value.is_not(None))
+        .group_by(Answer.question_id, Answer.number_value)
+    ).all()
+    spread: dict[int, dict[float, int]] = {}
+    for question_id, value, count in rows:
+        spread.setdefault(question_id, {})[float(value)] = count
+    return spread
+
+
+def _buckets(
+    question: Question, qtype: QuestionType, counts: dict[float, int]
+) -> list[ValueCount]:
+    """The distribution as bars.
+
+    A rating gets every step of its scale, empty ones included: "nobody gave us
+    a 1" is worth seeing, and a histogram with the gaps closed up would hide it.
+    A number question has no scale to fill in, so it reports only the values
+    that were actually answered.
+    """
+    if qtype is QuestionType.RATING:
+        top = int((question.settings or {}).get("max_rating", DEFAULT_MAX_RATING))
+        return [
+            ValueCount(value=float(step), count=counts.get(float(step), 0))
+            for step in range(1, max(top, 1) + 1)
+        ]
+    return [
+        ValueCount(value=value, count=counts[value]) for value in sorted(counts)
+    ]
 
 
 def _yes_no_counts(db: Session, ids: list[int]) -> dict[int, dict[bool, int]]:

@@ -220,7 +220,14 @@ export interface QuestionStats {
   average: number | null;
   minimum: number | null;
   maximum: number | null;
+  /** rating / number — the spread, with a rating's empty buckets kept. */
+  distribution: ValueCount[] | null;
   samples: string[] | null;
+}
+
+export interface ValueCount {
+  value: number;
+  count: number;
 }
 
 export interface FormSummaryStats {

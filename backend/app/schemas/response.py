@@ -79,6 +79,13 @@ class ChoiceCount(BaseModel):
     count: int
 
 
+class ValueCount(BaseModel):
+    """One bar of a numeric distribution."""
+
+    value: float
+    count: int
+
+
 class QuestionStats(BaseModel):
     question_id: int
     title: str
@@ -90,6 +97,10 @@ class QuestionStats(BaseModel):
     average: float | None = None
     minimum: float | None = None
     maximum: float | None = None
+    #: rating / number — how the answers are spread, so the panel can draw a
+    #: histogram rather than only report a mean. Ratings carry every bucket on
+    #: the scale, including the empty ones; an unpicked star is information.
+    distribution: list[ValueCount] | None = None
     #: short_text / long_text / email — a few recent verbatims
     samples: list[str] | None = None
 

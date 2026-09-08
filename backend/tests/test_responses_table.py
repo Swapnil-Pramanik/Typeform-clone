@@ -92,3 +92,47 @@ def test_each_row_carries_the_ending_it_reached(client, collected):
     """The table shows an Ending column, so the row has to know its ending."""
     listed = rows(client, collected["form"]["id"])["items"]
     assert all(item["ending_title"] for item in listed)
+
+
+def test_a_rating_distribution_keeps_its_empty_buckets(client):
+    """"Nobody gave us a 1" is information; a histogram must not close the gap."""
+    form = client.post("/api/forms", json={"title": "Ratings"}).json()
+    question = client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "rating", "title": "How did we do?", "settings": {"max_rating": 5}},
+    ).json()
+    slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+
+    for value in (5, 5, 3):
+        client.post(
+            f"/api/f/{slug}/responses",
+            json={"answers": [{"question_id": question["id"], "value": value}]},
+        )
+
+    stats = client.get(f"/api/forms/{form['id']}/summary").json()["questions"][0]
+    assert [(bucket["value"], bucket["count"]) for bucket in stats["distribution"]] == [
+        (1.0, 0),
+        (2.0, 0),
+        (3.0, 1),
+        (4.0, 0),
+        (5.0, 2),
+    ]
+
+
+def test_a_number_question_reports_only_the_values_answered(client):
+    """No scale to fill in, so an unbounded number question lists what came back."""
+    form = client.post("/api/forms", json={"title": "Numbers"}).json()
+    question = client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "number", "title": "How many?"},
+    ).json()
+    slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+
+    for value in (2, 40, 40):
+        client.post(
+            f"/api/f/{slug}/responses",
+            json={"answers": [{"question_id": question["id"], "value": value}]},
+        )
+
+    stats = client.get(f"/api/forms/{form['id']}/summary").json()["questions"][0]
+    assert [(b["value"], b["count"]) for b in stats["distribution"]] == [(2.0, 1), (40.0, 2)]
