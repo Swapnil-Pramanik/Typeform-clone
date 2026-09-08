@@ -146,3 +146,54 @@ def test_history_is_capped(client, form, monkeypatch):
         client.post(f"/api/forms/{form['id']}/unpublish")
 
     assert len(versions(client, form["id"])) <= 3
+
+
+def test_the_seeded_history_is_real_and_not_a_story(client, db_session):
+    """The seed's history must be diffs, not four labels over one snapshot.
+
+    Written after shipping exactly that bug: the panel looked convincing and
+    every Restore button was a no-op, because all four rows carried the same
+    snapshot and invented summaries. Distinct snapshots are the property that
+    makes the entries mean anything.
+    """
+    from app.models import Form, FormStatus
+    from app.seed import _seed_history
+    from app.services.versions import list_versions
+
+    created = client.post("/api/forms", json={"title": "Seeded"}).json()
+    client.post(
+        f"/api/forms/{created['id']}/questions",
+        json={"type": "short_text", "title": "Your name?"},
+    )
+    form = db_session.get(Form, created["id"])
+    form.welcome_screen = {"title": "Hello", "button_text": "Start"}
+    form.theme = {"color": "#1d4ed8", "background": "#ffffff", "font": "inter"}
+    form.status = FormStatus.PUBLISHED
+    db_session.commit()
+
+    _seed_history(db_session, form)
+
+    history = list_versions(db_session, form.id)
+    assert len(history) >= 4
+
+    snapshots = [version.snapshot for version in history]
+    for index, snapshot in enumerate(snapshots):
+        assert snapshot not in snapshots[index + 1 :], "two entries share a snapshot"
+
+    # The summaries are computed, so they describe the diffs that really happened.
+    summaries = [version.summary for version in history]
+    assert "First version" in summaries
+    assert "Changed the welcome screen" in summaries
+    assert "Changed the design" in summaries
+
+    # And the oldest entry restores to a form that really is plainer.
+    oldest = history[-1]
+    response = client.post(
+        f"/api/forms/{form.id}/versions/{oldest.id}/restore"
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["welcome_screen"] is None
+    assert response.json()["theme"] is None
+
+    # …and the form ends up published, because the seed leaves it that way.
+    assert form.status == FormStatus.PUBLISHED

@@ -16,12 +16,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.services.versions import snapshot_form
+from app.services.versions import latest_version, record_version
 from app.models import (
     Answer,
     Form,
     FormStatus,
-    FormVersion,
     Question,
     QuestionOption,
     QuestionRule,
@@ -467,33 +466,53 @@ def _clear_seeded(db: Session) -> None:
 
 
 
-def _seed_history(db: Session, form: Form) -> None:
-    """Back-date a short, plausible version history for a seeded form.
+def _record_at(db: Session, form: Form, kind: str, ago: timedelta) -> None:
+    """Record the form's current state, then back-date the row.
 
-    Written directly rather than by replaying edits, because the seed builds
-    each form in one go — there are no intermediate states to record. The
-    snapshots are the form as it stands now, so every entry restores to
-    something coherent; only the summaries describe the road there.
+    Back-dating as we go is not decoration. ``record_version`` folds an edit
+    into the previous one when that one is less than three minutes old, and the
+    seed writes all of these within the same second — without moving each row
+    into the past first, the whole history would collapse into a single entry.
     """
-    now = datetime.now(timezone.utc)
-    snapshot = snapshot_form(form)
-    story = [
-        (timedelta(days=9), "edit", "First version"),
-        (timedelta(days=8, hours=3), "edit", f"Added “{form.live_questions[-1].title}”"),
-        (timedelta(days=8), "publish", "Published"),
-        (timedelta(days=2), "edit", "Changed the design · Changed the welcome screen"),
-    ]
-    for ago, kind, summary in story:
-        db.add(
-            FormVersion(
-                form_id=form.id,
-                created_at=(now - ago).replace(tzinfo=None),
-                kind=kind,
-                summary=summary,
-                snapshot=snapshot,
-            )
-        )
+    # A ``None`` means the state was already recorded — that row is the one to
+    # move, or the edits that follow would fold into it and the history would
+    # collapse to a single entry anyway.
+    version = record_version(db, form, kind=kind) or latest_version(db, form.id)
+    if version is None:
+        return
+    version.created_at = (datetime.now(timezone.utc) - ago).replace(tzinfo=None)
     db.commit()
+
+
+def _seed_history(db: Session, form: Form) -> None:
+    """Give a seeded form a real history by actually making the edits.
+
+    The form is rewound to a plainer state and then built forward again, so
+    every entry is a genuine diff against the one before it: the summaries are
+    computed by the same code that computes them in the app, and restoring an
+    entry really does put the form back to it. Writing invented summaries over
+    identical snapshots would look the same in the panel and be a lie — and the
+    Restore button would do nothing, which is how anyone would find out.
+    """
+    welcome, theme, status = form.welcome_screen, form.theme, form.status
+
+    form.welcome_screen = None
+    form.theme = None
+    form.status = FormStatus.DRAFT
+    db.commit()
+    _record_at(db, form, "edit", timedelta(days=9))
+
+    form.welcome_screen = welcome
+    db.commit()
+    _record_at(db, form, "edit", timedelta(days=8, hours=3))
+
+    form.theme = theme
+    db.commit()
+    _record_at(db, form, "edit", timedelta(days=8, hours=1))
+
+    form.status = status
+    db.commit()
+    _record_at(db, form, "publish", timedelta(days=8))
 
 
 def seed() -> None:

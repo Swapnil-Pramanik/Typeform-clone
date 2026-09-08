@@ -80,8 +80,10 @@ question types between them, plus **Support triage**, a branching demo whose
 first answer decides whether the next question is asked at all. 19 responses
 including two partials, so the completion rate and the summary charts have
 something real to show, and both branches already have a submission. Each
-published form also gets a short back-dated version history, so the history panel
-has something in it the moment the app is opened.
+published form also gets a short back-dated version history — built by actually
+rewinding the form and editing it forward again, so every entry is a genuine diff
+and Restore really works. The draft has no history, because nothing has happened
+to it yet.
 
 ---
 
@@ -979,6 +981,7 @@ invariant the design rests on rather than one function:
 | `test_restoring_is_itself_recorded_so_it_can_be_undone` | A history you can fall out of would be worse than none. |
 | `test_restoring_does_not_republish_a_form` | Status is live identity, not part of what is rolled back. |
 | `test_a_version_from_another_form_is_refused` | A version ID from a different form is a 404, not a cross-form restore. |
+| `test_the_seeded_history_is_real_and_not_a_story` | Seeded entries carry distinct snapshots, so no Restore button is a no-op. |
 | `test_always_skips_the_next_question_whatever_the_answer` | "Always go to" takes the block off the path, so its required flag cannot block. |
 | `test_conditional_rules_outrank_the_always_rule_below_them` | List order really is precedence: the catch-all only fires once the others decline. |
 | `test_always_replaces_the_fall_through_rather_than_racing_it` | The cycle checker stops believing in an edge the always rule removed. |
