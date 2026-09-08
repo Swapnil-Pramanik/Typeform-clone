@@ -35,7 +35,30 @@ export function useForms(search?: string): UseQueryResult<FormSummary[]> {
   return useQuery({
     queryKey: keys.forms(search),
     queryFn: () => api.listForms(search),
+    // Keeps the current list on screen while a search request is in flight,
+    // rather than dropping the whole table to a loading pane between keystrokes.
+    placeholderData: (previous) => previous,
   });
+}
+
+/**
+ * Warm a form's builder data before it is asked for.
+ *
+ * The dashboard already knows which form the pointer is over, and the request
+ * costs about 150ms — most of it a fixed round trip to the region rather than
+ * anything the database does. Starting it on hover means the builder usually
+ * has its data before the click lands, which is the only way left to take real
+ * time off that navigation.
+ */
+export function usePrefetchForm(): (id: number) => void {
+  const client = useQueryClient();
+  return (id: number) => {
+    void client.prefetchQuery({
+      queryKey: keys.form(id),
+      queryFn: () => api.getForm(id),
+      staleTime: 15_000,
+    });
+  };
 }
 
 export function useFormQuery(id: number): UseQueryResult<Form> {

@@ -1072,6 +1072,29 @@ anything that removes a round trip between the client and the region, which is
 why the respondent page is server-rendered: the browser makes **no** API call to
 paint the first question, and the only request it ever sends is the submit.
 
+### Round trips the client does not have to make
+
+With the server near its floor, the remaining latency is in how many requests
+the browser starts and when.
+
+| Change | Before | After |
+|---|---|---|
+| Dashboard search | one request per keystroke | one, 300 ms after typing stops |
+| Search results | table dropped to a loading pane between keystrokes | previous list held while the next lands |
+| Dashboard → builder | ~150 ms fetch after the click | prefetched on hover; **3 ms** to ready |
+| Re-visiting a page | refetch | served from cache for 15 s (`staleTime`) |
+
+The prefetch is the interesting one. A row already knows which form it is, and
+hovering is intent — so the request starts while the pointer is still moving and
+has usually landed before the click. Focus triggers it too, so a keyboard user
+gets the same. It costs one request that may go unused; against saving the whole
+visible latency of the most common navigation in the app, that is a good trade.
+
+The per-keystroke searching was the same defect in two places, found by watching
+the network rather than by reading the code: seven letters fired fourteen
+requests on the responses table and eight on the dashboard, with no ordering
+guarantee between them.
+
 ### Concurrency
 
 Sixty parallel requests to the public form endpoint, from one machine:

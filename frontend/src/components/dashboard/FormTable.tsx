@@ -4,6 +4,8 @@
 
 import { useRouter } from "next/navigation";
 
+import { usePrefetchForm } from "@/lib/queries";
+
 import { FormThumbnail } from "@/components/dashboard/FormThumbnail";
 import { RowMenu } from "@/components/dashboard/RowMenu";
 import { Integrations } from "@/components/ui/icons";
@@ -39,13 +41,29 @@ function completion(form: FormSummary): string {
 export function FormTable({ forms, layout, ...actions }: FormTableProps) {
   const comingSoon = useComingSoon();
   const router = useRouter();
+  const prefetch = usePrefetchForm();
   const open = (form: FormSummary) => router.push(`/forms/${form.id}/create`);
+
+  /**
+   * Start fetching the form the pointer is over.
+   *
+   * The row already knows which form it is, and the builder's request costs
+   * about 150ms — nearly all of it the fixed trip to the region rather than
+   * anything the database does. Starting it on hover usually means the data has
+   * landed before the click does, and it is the only way left to take real time
+   * off that navigation. Focus counts as intent too, so a keyboard user gets it.
+   */
+  const warm = (form: FormSummary) => ({
+    onMouseEnter: () => prefetch(form.id),
+    onFocus: () => prefetch(form.id),
+  });
 
   if (layout === "grid") {
     return (
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {forms.map((form) => (
           <li
+            {...warm(form)}
             key={form.id}
             onClick={() => open(form)}
             className="cursor-pointer rounded-xl border border-line bg-panel p-4 transition-colors hover:border-line-strong"
@@ -85,7 +103,7 @@ export function FormTable({ forms, layout, ...actions }: FormTableProps) {
 
       <ul className="flex flex-col gap-2">
         {forms.map((form) => (
-          <li key={form.id}>
+          <li key={form.id} {...warm(form)}>
             <div
               onClick={() => open(form)}
               className={cn(

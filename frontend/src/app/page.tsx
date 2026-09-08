@@ -32,6 +32,7 @@ import { Modal } from "@/components/ui/Modal";
 import { LoadingPane } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { copyText } from "@/lib/clipboard";
+import { useDebouncedCallback } from "@/lib/hooks";
 import { errorMessage } from "@/lib/errors";
 import { useFormActions, useForms } from "@/lib/queries";
 import type { FormSummary } from "@/types";
@@ -41,7 +42,12 @@ export default function DashboardPage() {
   const toast = useToast();
 
   const [tab, setTab] = useState<WorkspaceTabName>("Forms");
+  // Two values: what the box shows, and what the server is asked for 300ms
+  // after typing stops. One request per keystroke was ~150ms of round trip
+  // each, and the answers could land out of order.
   const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const runSearch = useDebouncedCallback<string>(setQuery, 300);
   const [layout, setLayout] = useState<Layout>("list");
   const [sort, setSort] = useState<SortKey>("created");
   const [pendingDelete, setPendingDelete] = useState<FormSummary | null>(null);
@@ -51,7 +57,7 @@ export default function DashboardPage() {
     isLoading,
     error,
     refetch,
-  } = useForms(search || undefined);
+  } = useForms(query || undefined);
   const actions = useFormActions();
 
   /**
@@ -142,7 +148,10 @@ export default function DashboardPage() {
         <div className="flex min-h-0 flex-1">
           <Sidebar
             search={search}
-            onSearch={setSearch}
+            onSearch={(value) => {
+              setSearch(value);
+              runSearch(value);
+            }}
             onCreate={() => void create()}
             creating={actions.create.isPending}
             responsesCollected={responsesCollected}
@@ -184,7 +193,7 @@ export default function DashboardPage() {
                       }
                     />
                   </div>
-                ) : sorted.length === 0 && search ? (
+                ) : sorted.length === 0 && query ? (
                   <div className="p-6">
                     <EmptyState
                       title="No forms match that search"
