@@ -164,6 +164,12 @@ class QuestionOption(Base):
 
     question: Mapped[Question] = relationship(back_populates="options")
 
+    #: Every form load fetches options by question; without this SQLite scans
+    #: the whole table on the one request every respondent makes.
+    __table_args__ = (
+        Index("ix_question_options_question", "question_id", "position"),
+    )
+
 
 class FormVersion(Base):
     """A snapshot of a form as it stood at one moment, plus what changed.

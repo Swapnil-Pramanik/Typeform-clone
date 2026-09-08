@@ -74,6 +74,7 @@ def submit_response(db: Session, form: Form, payload: SubmissionIn) -> Submissio
     )
 
     seen: set[int] = set()
+    rows: list[dict] = []
     for item in payload.answers:
         question = live.get(item.question_id)
         if question is None:
@@ -88,17 +89,17 @@ def submit_response(db: Session, form: Form, payload: SubmissionIn) -> Submissio
         if typed.is_empty:
             continue
 
-        response.answers.append(
-            Answer(
-                question_id=question.id,
-                question_title=question.title,
-                question_type=question.type,
-                text_value=typed.text_value,
-                number_value=typed.number_value,
-                bool_value=typed.bool_value,
-                option_ids=typed.option_ids,
-                display_value=typed.display_value,
-            )
+        rows.append(
+            {
+                "question_id": question.id,
+                "question_title": question.title,
+                "question_type": question.type,
+                "text_value": typed.text_value,
+                "number_value": typed.number_value,
+                "bool_value": typed.bool_value,
+                "option_ids": typed.option_ids,
+                "display_value": typed.display_value,
+            }
         )
 
     # A completed submission must satisfy every required question the respondent
@@ -114,7 +115,22 @@ def submit_response(db: Session, form: Form, payload: SubmissionIn) -> Submissio
             if question.required and question.id in asked and question.id not in seen:
                 raise AnswerValidationError(question.id, "This field is required.")
 
+    # One INSERT for every answer rather than one each: on SQLite-over-HTTP a
+    # statement is a network round trip, and a ten-question form cost eleven of
+    # them to store.
+    #
+    # `Answer.__table__.insert()` rather than the ORM's: the ORM drops columns
+    # whose value is None, so rows with different empty fields compile to
+    # different statements and cannot be batched — which is exactly what a
+    # table of typed answer columns produces, since every row leaves four of
+    # them null.
     db.add(response)
+    db.flush()
+    if rows:
+        db.execute(
+            Answer.__table__.insert(),
+            [{"response_id": response.id, **row} for row in rows],
+        )
     db.commit()
 
     raw = {item.question_id: item.value for item in payload.answers}
