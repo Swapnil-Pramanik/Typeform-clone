@@ -30,7 +30,8 @@ conversational flow.
 11. [Configuration](#11-configuration)
 12. [Deployment](#12-deployment)
 13. [Testing](#13-testing)
-14. [Assumptions and deliberate scope decisions](#14-assumptions-and-deliberate-scope-decisions)
+14. [Scale, latency and the queries behind them](#14-scale-latency-and-the-queries-behind-them)
+15. [Assumptions and deliberate scope decisions](#15-assumptions-and-deliberate-scope-decisions)
 
 ---
 
@@ -232,6 +233,8 @@ drift from what a respondent sees.
 │       ├── config.py                # settings from the environment
 │       ├── db.py                    # engine, session dependency, FK pragma
 │       ├── seed.py                  # idempotent demo data
+│   ├── scripts/
+│   │   └── profile_queries.py       # statements per endpoint — see §14
 │       ├── models/
 │       │   ├── types.py             # JSONText column, QuestionType, FormStatus
 │       │   ├── form.py              # forms, questions, question_options
@@ -365,6 +368,7 @@ drift from what a respondent sees.
 | `routers/deps.py` | The session dependency and the three exception→HTTP translations. |
 | `routers/*.py` | Parse, call a service, return. |
 | `seed.py` | Idempotent: deletes only the three forms it owns, then rebuilds them from a fixed random seed so re-seeding reproduces the same charts. |
+| `scripts/profile_queries.py` | Counts the SQL statements each endpoint emits. On SQLite-over-HTTP that count *is* the latency — see §14. |
 
 ### Frontend
 
@@ -1007,7 +1011,102 @@ rules) and a production build, all clean.
 
 ---
 
-## 14. Assumptions and deliberate scope decisions
+## 14. Scale, latency and the queries behind them
+
+Measured, not estimated. The numbers below come from two scripts: one counts
+the SQL statements each endpoint emits, the other times the deployed API from a
+client in the same country as the region it runs in (`bom1`).
+
+### Why statement count is the metric
+
+Production is SQLite over HTTP — Turso — so **every statement is a network round
+trip**. Counting them is the closest thing to counting milliseconds, and it is
+the number this codebase was tuned against.
+
+| Endpoint | Statements | Notes |
+|---|---:|---|
+| `GET /api/forms` (dashboard) | **1** | Counts are correlated subqueries, not a query per row |
+| `GET /api/forms/{id}` (builder) | 4 | form → questions → options → rules |
+| `GET /api/f/{slug}` (respondent) | 4 | the same four; the hottest read in the app |
+| `POST /api/f/{slug}/responses` (submit) | **6** | flat, whatever the form's length |
+| `GET /api/forms/{id}/responses` | 7 | form, count, page, answers |
+| `GET /api/forms/{id}/summary` | 11 | one pass per *kind* of question, not per question |
+| `GET /api/forms/{id}/versions` | 5 | |
+
+There is no N+1 on any path. The four-statement form load is `selectinload`
+deliberately: the alternative — joining questions, options and rules in one
+statement — returns the cartesian product of three one-to-many relations, which
+is more bytes over the same wire.
+
+Two things were wrong when this was profiled, and both are fixed:
+
+- **`question_options` had no index.** Loading a form asked
+  `WHERE question_id IN (…)` and SQLite answered with a full table scan, on the
+  one request every respondent makes. `EXPLAIN QUERY PLAN` now reports SEARCH.
+- **Submitting emitted one INSERT per answer** — a ten-question form cost
+  eleven round trips to store. It is now a single batched INSERT, so submit is
+  six statements whatever the form's length. That required the Core table
+  insert rather than the ORM's, because the ORM omits `None` columns, so rows
+  with different empty fields compile to different statements and cannot batch
+  — exactly what a table of typed answer columns produces.
+
+### Where the time actually goes
+
+| Endpoint | p50 | Statements |
+|---|---:|---:|
+| `/api/health` | 137 ms | 1 |
+| `/api/f/{slug}` | 149 ms | 4 |
+| `/api/forms/{id}` | 149 ms | 4 |
+| `/api/forms/{id}/responses` | 175 ms | 7 |
+| `/api/forms/{id}/summary` | 178 ms | 11 |
+
+The health check does one trivial query and still costs 137 ms; the heaviest
+endpoint does eleven and costs 178 ms. So **roughly 135 ms is a fixed floor** —
+TLS, the trip to `bom1` and the function invocation — and the marginal cost of a
+query is about **4 ms**, because the database sits in the same region as the
+function.
+
+That reorders the optimisation list. Shaving another statement off a read buys
+~4 ms against a 135 ms floor and is not worth complexity. What *is* worth it is
+anything that removes a round trip between the client and the region, which is
+why the respondent page is server-rendered: the browser makes **no** API call to
+paint the first question, and the only request it ever sends is the submit.
+
+### Concurrency
+
+Sixty parallel requests to the public form endpoint, from one machine:
+
+| Concurrent | Success | p50 | p95 | Throughput |
+|---:|---|---:|---:|---:|
+| 1 | 1/1 | 257 ms | 257 ms | 3.9 req/s |
+| 10 | 10/10 | 211 ms | 1747 ms | 5.4 req/s |
+| 30 | 30/30 | 316 ms | 1803 ms | 16.1 req/s |
+| 60 | 60/60 | 201 ms | 367 ms | 148 req/s |
+
+No failures at any level. The p95 spikes at 10 and 30 are **cold starts**: Vercel
+was still adding instances. By 60 the pool is warm and p95 falls back to 367 ms
+while throughput rises to 148 req/s — the shape of horizontal scaling, not of a
+system under strain. The tail, not the mean, is this deployment's weakness, and
+it is a property of serverless rather than of the queries.
+
+### What would break first, and what to do about it
+
+| Load | What happens | The fix |
+|---|---|---|
+| Bursty traffic on a cold API | 1–2 s p95 on the first requests | A warming ping, or a container that does not scale to zero |
+| One form with ~10k responses | The responses table is paginated and indexed, so it holds; the CSV export streams | Already handled |
+| ~100k+ answers | `summary` aggregates the whole table per request | Cache the summary per form, invalidated on submit |
+| Many concurrent writes | Turso serialises writes; SQLite is single-writer | Real concurrent writes need Postgres — the schema ports directly |
+| A form with 100 questions | The submit is still 6 statements, but the payload grows | Fine; the flat statement count is the point |
+
+The honest summary: this comfortably serves a demo, a team, or a form doing
+thousands of responses a day. The first thing to change at genuinely high write
+volume is SQLite itself — every other limit here has a fix that does not touch
+the schema.
+
+---
+
+## 15. Assumptions and deliberate scope decisions
 
 Every shortcut below is a decision, not an omission.
 
