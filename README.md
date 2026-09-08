@@ -46,7 +46,7 @@ conversational flow.
 | | Change a block's answer type in place | Built |
 | | Add-element modal with the real product's block catalogue | Built |
 | | Welcome screens: add, edit, button label, estimated time | Built |
-| | Per-form theme — question colour, background, font | Built |
+| | Per-form theme — question colour, background, text colour, font, any colour from the spectrum | Built |
 | | **Logic jumps** — a Logic dialog per block: branch on an answer, or always jump | Built |
 | | Form settings — display switches, and open/closed | Built |
 | | Desktop / phone preview frame, shared by the canvas and the full preview | Built |
@@ -1117,14 +1117,21 @@ when it is not, so it contrasts in both themes. A hardcoded white knob was
 invisible against the white accent in dark mode — the kind of thing a token layer
 is meant to prevent and a literal colour quietly reintroduces.
 
-**13. A form's theme is three tokens, not a stylesheet.** `forms.theme` holds a
-question colour, a background and a font, and `lib/formTheme.ts` turns them into
+**13. A form's theme is four tokens, not a stylesheet.** `forms.theme` holds a
+question colour, a background, a text colour and a font, and `lib/formTheme.ts` turns them into
 overrides of the same `--tf-*` variables every component already reads — which is
 why a theme repaints the whole respondent flow without a single component knowing
 themes exist. A dark background derives its own text, hairline and answer-card
 colours from the background's luminance, because swapping only `--tf-bg` would
-render the form black on black. Per-question styling, background images and font
-uploads are not modelled.
+render the form black on black. An explicit text colour overrides that
+derivation, and its muted and faint steps are mixed toward the background with
+`color-mix` rather than picked separately — one choice, three tokens, and they
+cannot drift out of tune or become unreadable against the surface behind them.
+
+Each colour offers five presets plus a native colour input for the rest of the
+spectrum. That input is the one control on this panel a browser draws better
+than we would: it is the wheel, the eyedropper and the hex field at once.
+Per-question styling, background images and font uploads are not modelled.
 
 **14. Seed data invents a past for content, but never for the audit trail.**
 `published_at` and every response's `started_at` / `submitted_at` are back-dated
@@ -1214,6 +1221,17 @@ offline is a deliberate act rather than the far half of a toggle.
 A proper staged draft — the public page serving the last published snapshot
 while the builder edits a newer one — is the honest version of this, and
 `form_versions` already stores what it would need. It is not built.
+
+**19. Design is a panel mode, not a selection.** Opening the design panel used
+to *select* it, in the same union that holds the welcome screen and the
+questions — which meant opening it deselected the block, and the canvas showed
+"Select a block to edit it" while you changed the colours. Nothing to see them
+on, which is the one thing a colour picker needs.
+
+The block stays selected now and the panel simply swaps, so a colour lands on
+the block you were looking at. The duplicate entry point in the left rail is
+gone with it: a *Design → Colours & font* row that did the same thing as the
+toolbar button beside it.
 
 
 

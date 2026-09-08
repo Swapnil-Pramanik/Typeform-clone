@@ -5,17 +5,18 @@
  * as JSON — so the selection cannot simply be a question ID. Making that a
  * discriminated union keeps the distinction visible instead of smuggling a
  * sentinel ID through the component tree.
+ *
+ * Design used to be a third member here, which was the bug behind an empty
+ * canvas: opening the design panel *deselected the block*, so there was nothing
+ * left to preview the colours on. Design is a mode of the right-hand panel, not
+ * a thing that can be selected.
  */
 
 import type { Question } from "@/types";
 
-export type Selection =
-  | { kind: "welcome" }
-  | { kind: "design" }
-  | { kind: "question"; id: number };
+export type Selection = { kind: "welcome" } | { kind: "question"; id: number };
 
 export const WELCOME: Selection = { kind: "welcome" };
-export const DESIGN: Selection = { kind: "design" };
 
 export const question = (id: number): Selection => ({ kind: "question", id });
 

@@ -80,6 +80,8 @@ export interface WelcomeScreen {
 export interface FormTheme {
   color?: string;
   background?: string;
+  /** Optional. Left unset, the text colour is derived from the background. */
+  text?: string;
   font?: string;
 }
 

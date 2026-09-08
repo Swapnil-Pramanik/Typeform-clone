@@ -27,7 +27,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import { Plus, TypeRating, TypeWelcome } from "@/components/ui/icons";
+import { Plus, TypeWelcome } from "@/components/ui/icons";
 import { cn } from "@/lib/format";
 import { BLOCKS } from "@/lib/questionTypes";
 import {
@@ -47,7 +47,6 @@ interface QuestionListProps {
   /** Null when the form has no welcome screen yet. */
   welcome: WelcomeScreenData | null;
   onAddWelcome: () => void;
-  onSelectDesign: () => void;
 }
 
 export function QuestionList({
@@ -59,7 +58,6 @@ export function QuestionList({
   onAddEnding,
   welcome,
   onAddWelcome,
-  onSelectDesign,
 }: QuestionListProps) {
   const pages = questions.filter((question) => question.type !== "ending");
   const endings = questions.filter((question) => question.type === "ending");
@@ -179,30 +177,6 @@ export function QuestionList({
           </SortableContext>
         </DndContext>
       </Group>
-      <section className="flex flex-col gap-1.5 rounded-xl bg-panel p-2">
-        <header className="px-1.5 py-1">
-          <h2 className="text-[14px] text-ink">Design</h2>
-        </header>
-        <button
-          type="button"
-          onClick={onSelectDesign}
-          className={cn(
-            "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left",
-            selected.kind === "design" ? "bg-muted-strong" : "hover:bg-muted",
-          )}
-        >
-          <span
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] text-white"
-            style={{ backgroundColor: "#7c3aed" }}
-            aria-hidden="true"
-          >
-            <TypeRating width={11} height={11} />
-          </span>
-          <span className="flex-1 truncate text-[13px] text-ink">
-            Colours &amp; font
-          </span>
-        </button>
-      </section>
     </aside>
   );
 }

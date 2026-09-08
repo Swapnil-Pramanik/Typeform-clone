@@ -15,6 +15,8 @@ import {
   BACKGROUNDS,
   DEFAULT_THEME,
   FONTS,
+  TEXT_COLORS,
+  derivedTextColor,
 } from "@/lib/formTheme";
 import { cn } from "@/lib/format";
 import type { FormTheme } from "@/types";
@@ -44,6 +46,17 @@ export function DesignSettings({ theme, onPatch }: DesignSettingsProps) {
           selected={current.background}
           onSelect={(background) => onPatch({ background })}
           label="Background"
+        />
+      </Field>
+
+      <Field label="Text colour">
+        <Swatches
+          values={TEXT_COLORS}
+          // Unset means "derived from the background", so show what that
+          // derivation produced rather than an empty row with nothing selected.
+          selected={current.text ?? derivedTextColor(current.background)}
+          onSelect={(text) => onPatch({ text })}
+          label="Text colour"
         />
       </Field>
 
@@ -93,6 +106,8 @@ function Swatches({
   onSelect: (value: string) => void;
   label: string;
 }) {
+  const custom = Boolean(selected) && !values.includes(selected as string);
+
   return (
     <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={label}>
       {values.map((value) => (
@@ -112,6 +127,39 @@ function Swatches({
           )}
         />
       ))}
+
+      {/*
+        The whole spectrum, behind the presets rather than instead of them. The
+        native colour input is the eyedropper, the wheel and the hex field all
+        at once, and it is the one control here that a browser draws better than
+        we would. It shows the chosen colour when that colour is not a preset,
+        and a spectrum otherwise, so the row always says which one is live.
+      */}
+      <label
+        title={`${label} — pick any colour`}
+        className={cn(
+          "relative h-8 w-8 cursor-pointer rounded-full border border-line transition-transform",
+          custom
+            ? "ring-2 ring-ink ring-offset-2 ring-offset-[var(--tf-panel)]"
+            : "hover:scale-110",
+        )}
+        style={
+          custom
+            ? { backgroundColor: selected }
+            : {
+                backgroundImage:
+                  "conic-gradient(#ef4444,#eab308,#22c55e,#06b6d4,#3b82f6,#a855f7,#ef4444)",
+              }
+        }
+      >
+        <input
+          type="color"
+          value={selected ?? "#000000"}
+          onChange={(event) => onSelect(event.target.value)}
+          aria-label={`${label} — pick any colour`}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        />
+      </label>
     </div>
   );
 }

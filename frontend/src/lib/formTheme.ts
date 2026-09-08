@@ -11,13 +11,25 @@ import type { CSSProperties } from "react";
 
 import type { FormTheme } from "@/types";
 
+// Five presets each, so a row is five swatches plus the spectrum picker and
+// still fits the panel's width on one line.
 export const ACCENT_COLORS = [
   "#26262b",
   "#0b3d2e",
   "#1d4ed8",
   "#b91c1c",
   "#7c3aed",
-  "#b45309",
+] as const;
+
+// The first and last are what `derivedTextColor` returns for a light and a dark
+// background, so an untouched form shows a preset selected rather than reading
+// as a custom colour nobody chose.
+export const TEXT_COLORS = [
+  "#4b424d",
+  "#12161c",
+  "#5b6472",
+  "#0b3d2e",
+  "#eceef2",
 ] as const;
 
 export const BACKGROUNDS = [
@@ -98,6 +110,13 @@ const FORM_SURFACE: Record<string, string> = {
  * black on black. Deriving those from the background's luminance keeps the
  * palette coherent whatever colour a creator picks.
  */
+/** What the text colour would be if the creator has not chosen one. */
+export function derivedTextColor(background?: string): string {
+  return isDark(background || DEFAULT_THEME.background!)
+    ? TEXT_COLORS[4]
+    : TEXT_COLORS[0];
+}
+
 export function formSurface(theme: FormTheme | null | undefined): CSSProperties {
   const style: Record<string, string> = { ...FORM_SURFACE };
   if (!theme) return style as CSSProperties;
@@ -125,6 +144,17 @@ export function formSurface(theme: FormTheme | null | undefined): CSSProperties 
     style["--tf-choice-key-bg"] = "#12161c";
     style["--tf-muted"] = "#1c212a";
     style["--tf-muted-strong"] = "#242b35";
+  }
+
+  // An explicit text colour wins over whatever the background implied, and the
+  // muted and faint steps are mixed toward the background rather than picked
+  // separately — one choice, three tokens, and they cannot drift out of tune
+  // with each other or become unreadable against the surface behind them.
+  if (theme.text) {
+    style["--tf-ink"] = theme.text;
+    style["--tf-ink-strong"] = theme.text;
+    style["--tf-ink-muted"] = `color-mix(in srgb, ${theme.text} 72%, ${background})`;
+    style["--tf-ink-faint"] = `color-mix(in srgb, ${theme.text} 48%, ${background})`;
   }
 
   return style as CSSProperties;

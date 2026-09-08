@@ -22,7 +22,6 @@ import { QuestionList } from "@/components/builder/QuestionList";
 import { SaveIndicator } from "@/components/builder/SaveIndicator";
 import { SettingsPanel } from "@/components/builder/SettingsPanel";
 import {
-  DESIGN,
   WELCOME,
   question as questionSelection,
   selectedQuestion,
@@ -54,6 +53,9 @@ export default function BuilderPage({
   // The canvas frame and the full preview share one device, so switching in
   // either place is switching the same thing.
   const [device, setDevice] = useState<ViewDevice>("desktop");
+  // Design is a mode of the right-hand panel, not a selection. Keeping the
+  // block selected is the point: the colours have to land on something.
+  const [designOpen, setDesignOpen] = useState(false);
 
   const questions = useMemo(
     () => builder.form?.questions ?? [],
@@ -70,9 +72,7 @@ export default function BuilderPage({
     chosen !== null &&
     (chosen.kind === "welcome"
       ? welcome !== null
-      : chosen.kind === "design"
-        ? true
-        : questions.some((q) => q.id === chosen.id));
+      : questions.some((q) => q.id === chosen.id));
   const selection = chosenIsValid ? chosen : fallback;
   const selected = selectedQuestion(selection, questions);
   const pages = questions.filter((question) => question.type !== "ending");
@@ -156,13 +156,13 @@ export default function BuilderPage({
       toolbar={
         <BuilderToolbar
           onAddContent={() => setAddOpen(true)}
-          onOpenDesign={() => setChosen(DESIGN)}
+          onOpenDesign={() => setDesignOpen((open) => !open)}
           onOpenSettings={() => setSettingsOpen(true)}
           onPreview={() => setPreviewOpen(true)}
           onOpenHistory={() => setHistoryOpen(true)}
           device={device}
           onDevice={setDevice}
-          designActive={selection.kind === "design"}
+          designActive={designOpen}
         />
       }
     >
@@ -185,7 +185,6 @@ export default function BuilderPage({
             onSelect={setChosen}
             welcome={welcome}
             onAddWelcome={addWelcome}
-            onSelectDesign={() => setChosen(DESIGN)}
             onReorder={(ids) => void reorder(ids)}
             onAddContent={() => setAddOpen(true)}
             onAddEnding={() => void addBlock("ending")}
@@ -206,7 +205,7 @@ export default function BuilderPage({
             device={device}
           />
 
-          {selection.kind === "design" ? (
+          {designOpen ? (
             <DesignSettings
               theme={builder.form?.theme ?? null}
               onPatch={(patch) =>
