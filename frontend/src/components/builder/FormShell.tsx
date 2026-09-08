@@ -78,10 +78,10 @@ export function FormShell({ formId, headerSlot, toolbar, children }: FormShellPr
   const onPublish = async () => {
     try {
       const updated = await publish.mutateAsync(formId);
+      // The slug only tells a republish something it already knows — the link
+      // has not changed. A first publish is the moment worth naming it.
       toast.show(
-        published
-          ? `Your changes are live at /f/${updated.slug}`
-          : `Published to /f/${updated.slug}`,
+        published ? "Your changes are live" : `Published to /f/${updated.slug}`,
         "success",
       );
     } catch (error) {
