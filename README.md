@@ -79,11 +79,11 @@ draft: a customer-feedback and an event-registration form covering all eight
 question types between them, plus **Support triage**, a branching demo whose
 first answer decides whether the next question is asked at all. 19 responses
 including two partials, so the completion rate and the summary charts have
-something real to show, and both branches already have a submission. Each
-published form also gets a short back-dated version history — built by actually
-rewinding the form and editing it forward again, so every entry is a genuine diff
-and Restore really works. The draft has no history, because nothing has happened
-to it yet.
+something real to show, and both branches already have a submission.
+
+The seed writes **no version history**. A version row records something the
+system did, and the seed did not do those things — see assumption 14. History
+starts empty and fills the moment anyone edits a form.
 
 ---
 
@@ -981,7 +981,8 @@ invariant the design rests on rather than one function:
 | `test_restoring_is_itself_recorded_so_it_can_be_undone` | A history you can fall out of would be worse than none. |
 | `test_restoring_does_not_republish_a_form` | Status is live identity, not part of what is rolled back. |
 | `test_a_version_from_another_form_is_refused` | A version ID from a different form is a 404, not a cross-form restore. |
-| `test_the_seeded_history_is_real_and_not_a_story` | Seeded entries carry distinct snapshots, so no Restore button is a no-op. |
+| `test_no_version_is_ever_dated_in_the_past` | A version is stamped when it happened, never back-dated. |
+| `test_the_seed_writes_no_history_at_all` | Seeding invents no versions for forms nobody has edited. |
 | `test_always_skips_the_next_question_whatever_the_answer` | "Always go to" takes the block off the path, so its required flag cannot block. |
 | `test_conditional_rules_outrank_the_always_rule_below_them` | List order really is precedence: the catch-all only fires once the others decline. |
 | `test_always_replaces_the_fall_through_rather_than_racing_it` | The cycle checker stops believing in an edge the always rule removed. |
@@ -1110,3 +1111,18 @@ themes exist. A dark background derives its own text, hairline and answer-card
 colours from the background's luminance, because swapping only `--tf-bg` would
 render the form black on black. Per-question styling, background images and font
 uploads are not modelled.
+
+**14. Seed data invents a past for content, but never for the audit trail.**
+`published_at` and every response's `started_at` / `submitted_at` are back-dated
+across the last three weeks. That is scenario content: without it the dashboard's
+"updated" column, the completion rate and the responses table would all show the
+same instant, and none of them would demonstrate anything.
+
+Version history gets none of that treatment, and the distinction is the point. A
+response is a fact *about the fictional scenario*; a version row is a record of
+something *this system did*. Two earlier attempts at seeded history were both
+fabrications — first invented summaries over one repeated snapshot, so every
+Restore button was a no-op, then real summaries stamped eight days into a past
+this project does not have — and both looked convincing in the panel, which is
+exactly what made them worth deleting. History now starts empty, says so, and
+fills the moment anyone edits a form. Two tests hold that line.

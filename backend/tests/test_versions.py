@@ -1,5 +1,7 @@
 """Version history: what gets recorded, what it says, and what restoring does."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from app.services import versions as version_service
@@ -148,52 +150,49 @@ def test_history_is_capped(client, form, monkeypatch):
     assert len(versions(client, form["id"])) <= 3
 
 
-def test_the_seeded_history_is_real_and_not_a_story(client, db_session):
-    """The seed's history must be diffs, not four labels over one snapshot.
+def test_no_version_is_ever_dated_in_the_past(client, form):
+    """A version records something the system did, so it is stamped when it did it.
 
-    Written after shipping exactly that bug: the panel looked convincing and
-    every Restore button was a no-op, because all four rows carried the same
-    snapshot and invented summaries. Distinct snapshots are the property that
-    makes the entries mean anything.
+    Written after shipping the opposite twice. The seed grew a fabricated
+    history: first invented summaries over a single repeated snapshot, so every
+    Restore button was a no-op; then real summaries stamped eight days into a
+    past this project does not have. Both read convincingly in the panel, which
+    is why this asserts on the clock rather than on the wording.
     """
-    from app.models import Form, FormStatus
-    from app.seed import _seed_history
-    from app.services.versions import list_versions
+    started = datetime.now(timezone.utc) - timedelta(minutes=1)
 
-    created = client.post("/api/forms", json={"title": "Seeded"}).json()
-    client.post(
-        f"/api/forms/{created['id']}/questions",
-        json={"type": "short_text", "title": "Your name?"},
+    client.patch(f"/api/forms/{form['id']}", json={"title": "Renamed"})
+    client.post(f"/api/forms/{form['id']}/publish")
+
+    history = versions(client, form["id"])
+    assert history, "editing a form must record something"
+
+    for version in history:
+        # The API serialises the naive-UTC column, so read it back as UTC.
+        stamped = datetime.fromisoformat(version["created_at"]).replace(
+            tzinfo=timezone.utc
+        )
+        assert started <= stamped <= datetime.now(timezone.utc) + timedelta(minutes=1), (
+            version["created_at"]
+        )
+
+
+def test_the_seed_writes_no_history_at_all(db_session, monkeypatch):
+    """Seeding must not invent versions for forms nobody has edited.
+
+    Runs the real seed against the throwaway test database, so it also catches
+    a seed that has stopped working outright.
+    """
+    from sqlalchemy.orm import sessionmaker
+
+    import app.seed as seed_module
+    from app.models import FormVersion
+
+    monkeypatch.setattr(
+        seed_module,
+        "SessionLocal",
+        sessionmaker(bind=db_session.get_bind(), autoflush=False, expire_on_commit=False),
     )
-    form = db_session.get(Form, created["id"])
-    form.welcome_screen = {"title": "Hello", "button_text": "Start"}
-    form.theme = {"color": "#1d4ed8", "background": "#ffffff", "font": "inter"}
-    form.status = FormStatus.PUBLISHED
-    db_session.commit()
+    seed_module.seed()
 
-    _seed_history(db_session, form)
-
-    history = list_versions(db_session, form.id)
-    assert len(history) >= 4
-
-    snapshots = [version.snapshot for version in history]
-    for index, snapshot in enumerate(snapshots):
-        assert snapshot not in snapshots[index + 1 :], "two entries share a snapshot"
-
-    # The summaries are computed, so they describe the diffs that really happened.
-    summaries = [version.summary for version in history]
-    assert "First version" in summaries
-    assert "Changed the welcome screen" in summaries
-    assert "Changed the design" in summaries
-
-    # And the oldest entry restores to a form that really is plainer.
-    oldest = history[-1]
-    response = client.post(
-        f"/api/forms/{form.id}/versions/{oldest.id}/restore"
-    )
-    assert response.status_code == 200, response.text
-    assert response.json()["welcome_screen"] is None
-    assert response.json()["theme"] is None
-
-    # …and the form ends up published, because the seed leaves it that way.
-    assert form.status == FormStatus.PUBLISHED
+    assert db_session.query(FormVersion).count() == 0

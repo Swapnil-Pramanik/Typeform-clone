@@ -16,7 +16,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.services.versions import latest_version, record_version
 from app.models import (
     Answer,
     Form,
@@ -466,53 +465,15 @@ def _clear_seeded(db: Session) -> None:
 
 
 
-def _record_at(db: Session, form: Form, kind: str, ago: timedelta) -> None:
-    """Record the form's current state, then back-date the row.
-
-    Back-dating as we go is not decoration. ``record_version`` folds an edit
-    into the previous one when that one is less than three minutes old, and the
-    seed writes all of these within the same second — without moving each row
-    into the past first, the whole history would collapse into a single entry.
-    """
-    # A ``None`` means the state was already recorded — that row is the one to
-    # move, or the edits that follow would fold into it and the history would
-    # collapse to a single entry anyway.
-    version = record_version(db, form, kind=kind) or latest_version(db, form.id)
-    if version is None:
-        return
-    version.created_at = (datetime.now(timezone.utc) - ago).replace(tzinfo=None)
-    db.commit()
-
-
-def _seed_history(db: Session, form: Form) -> None:
-    """Give a seeded form a real history by actually making the edits.
-
-    The form is rewound to a plainer state and then built forward again, so
-    every entry is a genuine diff against the one before it: the summaries are
-    computed by the same code that computes them in the app, and restoring an
-    entry really does put the form back to it. Writing invented summaries over
-    identical snapshots would look the same in the panel and be a lie — and the
-    Restore button would do nothing, which is how anyone would find out.
-    """
-    welcome, theme, status = form.welcome_screen, form.theme, form.status
-
-    form.welcome_screen = None
-    form.theme = None
-    form.status = FormStatus.DRAFT
-    db.commit()
-    _record_at(db, form, "edit", timedelta(days=9))
-
-    form.welcome_screen = welcome
-    db.commit()
-    _record_at(db, form, "edit", timedelta(days=8, hours=3))
-
-    form.theme = theme
-    db.commit()
-    _record_at(db, form, "edit", timedelta(days=8, hours=1))
-
-    form.status = status
-    db.commit()
-    _record_at(db, form, "publish", timedelta(days=8))
+# Deliberately no seeded version history.
+#
+# Two earlier attempts at one were both fabrications: first invented summaries
+# over a single repeated snapshot, then real summaries stamped days into a past
+# this project does not have. A version row is a record of something the system
+# did, and the seed did not do those things.
+#
+# So history starts empty and fills up the moment anyone edits a form, which the
+# panel says in as many words. One edit produces one real entry.
 
 
 def seed() -> None:
@@ -534,9 +495,6 @@ def seed() -> None:
         _seed_event_responses(db, event, rng)
         _seed_support_responses(db, support)
         db.commit()
-
-        for form in (feedback, event, support):
-            _seed_history(db, form)
 
         print("Seeded 4 forms and 19 responses.")
         print(f"  published  /f/{FEEDBACK_SLUG}")
