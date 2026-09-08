@@ -17,7 +17,7 @@ conversational flow.
 
 ## Table of contents
 
-1. [What it does](#1-what-it-does)
+1. [What it does](#1-what-it-does) — including [the brief's bonus list](#the-briefs-bonus-list)
 2. [Setup](#2-setup)
 3. [Tech stack, and why](#3-tech-stack-and-why)
 4. [Architecture](#4-architecture)
@@ -74,7 +74,21 @@ conversational flow.
 
 The last row is deliberate. Every unbuilt area has a styled panel where the real
 product puts the feature, so its absence reads as a scope decision rather than as
-an unfinished screen. See §14.
+an unfinished screen. See §15.
+
+### The brief's bonus list
+
+Five of the six are built. The sixth is the only feature in the whole brief that
+the given stack cannot hold.
+
+| Bonus | Status | Where |
+|---|---|---|
+| Logic jumps / conditional branching | **Built** | A Logic dialog per block: conditional rules, an "Always go to" catch-all, cycles refused at authoring time and again at publish |
+| Custom themes (colours, fonts, background) | **Built** | Question colour, background, text colour and font — five presets each plus the full spectrum |
+| Export responses as CSV | **Built** | Streaming export from the results toolbar |
+| Partial-response tracking / completion rate | **Built** | A `pagehide` beacon records a drop-out; the rate appears on the dashboard and the summary |
+| Dark mode | **Built** | A token layer, with the form's own surface deliberately independent of it |
+| File-upload question type | **Not built** | Needs durable blob storage — see §15 |
 
 **Seeded demo data** — `python -m app.seed` creates three published forms and a
 draft: a customer-feedback and an event-registration form covering all eight
@@ -659,7 +673,7 @@ what an author is rolling back.
 
 ### Deliberately absent: a users table
 
-There is no auth and no `users` table. See §14.
+There is no auth and no `users` table. See §15.
 
 ---
 
@@ -1173,9 +1187,24 @@ reads from a single constant in `lib/creator.ts`. Adding real accounts means a
 layering already has the seam, and nothing else in the app reaches for the
 creator's identity.
 
-**No file-upload or payment question types.** Both are named in the brief as
-acceptable placeholders. They appear in the add-element modal, greyed out
-alongside the other unsupported types.
+**No file-upload or payment question types**, and this is the one gap that is
+about the stack rather than about time.
+
+The brief fixes the database as SQLite and names file upload as an acceptable
+placeholder. A file-upload answer needs somewhere durable to put bytes, and
+nothing in the given stack provides it: a serverless filesystem is ephemeral, and
+pushing blobs into SQLite — or into Turso, over HTTP — is the wrong shape at any
+size worth uploading. Every other bonus in the brief is built.
+
+With object storage in scope it is a small, well-understood feature rather than
+an open question: an endpoint returning a presigned `PUT` so the browser uploads
+straight to S3 and never proxies bytes through the API, a `file_url` alongside
+the existing typed answer columns, and one more input module under
+`components/render/inputs/` — the renderer dispatches on question type through a
+map, so nothing else changes. Payment is the same shape with a provider's
+checkout session in place of the presigned URL.
+
+Both types appear in the add-element modal, greyed out alongside the others.
 
 **No staged drafts.** The builder autosaves straight to the row the public page
 reads, so an edit to a published form is live the moment it saves. *Publish
