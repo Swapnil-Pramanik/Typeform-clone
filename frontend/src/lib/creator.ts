@@ -8,8 +8,9 @@
  */
 
 export const CREATOR = {
-  handle: "pramanikswapnil9",
+  /** A person's name rather than an account handle — it is what a reader parses. */
+  handle: "Swapnil Pramanik",
   initials: "SP",
-  /** The letter shown in the workspace chip beside the handle. */
-  workspaceInitial: "P",
+  /** The letter shown in the workspace chip beside the name. */
+  workspaceInitial: "S",
 } as const;
