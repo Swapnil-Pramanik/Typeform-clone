@@ -23,7 +23,7 @@ interface EndingScreenProps {
 }
 
 const TITLE_CLASS =
-  "text-[28px] leading-tight font-medium text-ink sm:text-[34px]";
+  "text-[28px] leading-tight font-medium text-ink @min-[640px]:text-[34px]";
 
 export function EndingScreen({
   ending,

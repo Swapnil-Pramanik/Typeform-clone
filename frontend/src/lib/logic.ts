@@ -117,3 +117,38 @@ export function remainingSteps(
 
   return steps;
 }
+
+/**
+ * The ending a respondent lands on — the client mirror of `resolve_ending`.
+ *
+ * The live flow never needs this: the server returns the ending with the
+ * submission. The builder's preview has no submission to return one, so it
+ * follows the same rule here rather than guessing, which is what keeps a
+ * preview of a branched form honest about where each branch lets out.
+ */
+export function resolveEnding(
+  all: Question[],
+  answers: Record<number, AnswerValue>,
+): Question | null {
+  const order = all.filter((question) => question.type !== "ending");
+  const endings = all.filter((question) => question.type === "ending");
+  if (endings.length === 0) return null;
+  if (order.length === 0) return endings[0];
+
+  // Walk the path the answers imply, then ask the last question reached
+  // whether a rule sends it to an ending.
+  let cursor: number | null = 0;
+  let last = order[0];
+  const seen = new Set<number>();
+  while (cursor !== null && !seen.has(cursor) && seen.size <= order.length) {
+    seen.add(cursor);
+    last = order[cursor];
+    cursor = nextIndex(order, cursor, answers[last.id] ?? null);
+  }
+
+  const withEndings = [...order, ...endings];
+  const from = withEndings.findIndex((question) => question.id === last.id);
+  const target = nextIndex(withEndings, from, answers[last.id] ?? null);
+  const reached = target === null ? null : withEndings[target];
+  return reached && reached.type === "ending" ? reached : endings[0];
+}

@@ -25,7 +25,7 @@ export function OkButton({ label, onClick, disabled, pending }: OkButtonProps) {
       >
         {pending ? "Sending…" : label}
       </button>
-      <span className="hidden items-center gap-1 text-xs text-ink-muted sm:flex">
+      <span className="hidden items-center gap-1 text-xs text-ink-muted @min-[640px]:flex">
         press <kbd className="font-sans font-medium">Enter</kbd>
         <span aria-hidden="true">↵</span>
       </span>

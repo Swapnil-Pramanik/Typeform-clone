@@ -145,6 +145,19 @@ export interface PublicForm {
   questions: Question[];
 }
 
+/** One entry in a form's version history. The snapshot itself stays server-side. */
+export interface FormVersion {
+  id: number;
+  created_at: string;
+  /** What put this version here. Only `edit` entries coalesce. */
+  kind: "edit" | "publish" | "unpublish" | "restore";
+  summary: string;
+  is_current: boolean;
+}
+
+/** Which frame the builder draws the form in — the canvas and the preview share it. */
+export type ViewDevice = "desktop" | "mobile";
+
 /** Anything a respondent can enter, before validation splits it by type. */
 export type AnswerValue = string | number | boolean | number[] | null;
 

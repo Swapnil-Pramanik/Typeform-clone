@@ -16,10 +16,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
+from app.services.versions import snapshot_form
 from app.models import (
     Answer,
     Form,
     FormStatus,
+    FormVersion,
     Question,
     QuestionOption,
     QuestionRule,
@@ -464,6 +466,36 @@ def _clear_seeded(db: Session) -> None:
     db.commit()
 
 
+
+def _seed_history(db: Session, form: Form) -> None:
+    """Back-date a short, plausible version history for a seeded form.
+
+    Written directly rather than by replaying edits, because the seed builds
+    each form in one go — there are no intermediate states to record. The
+    snapshots are the form as it stands now, so every entry restores to
+    something coherent; only the summaries describe the road there.
+    """
+    now = datetime.now(timezone.utc)
+    snapshot = snapshot_form(form)
+    story = [
+        (timedelta(days=9), "edit", "First version"),
+        (timedelta(days=8, hours=3), "edit", f"Added “{form.live_questions[-1].title}”"),
+        (timedelta(days=8), "publish", "Published"),
+        (timedelta(days=2), "edit", "Changed the design · Changed the welcome screen"),
+    ]
+    for ago, kind, summary in story:
+        db.add(
+            FormVersion(
+                form_id=form.id,
+                created_at=(now - ago).replace(tzinfo=None),
+                kind=kind,
+                summary=summary,
+                snapshot=snapshot,
+            )
+        )
+    db.commit()
+
+
 def seed() -> None:
     rng = random.Random(RANDOM_SEED)
     with SessionLocal() as db:
@@ -483,6 +515,9 @@ def seed() -> None:
         _seed_event_responses(db, event, rng)
         _seed_support_responses(db, support)
         db.commit()
+
+        for form in (feedback, event, support):
+            _seed_history(db, form)
 
         print("Seeded 4 forms and 19 responses.")
         print(f"  published  /f/{FEEDBACK_SLUG}")

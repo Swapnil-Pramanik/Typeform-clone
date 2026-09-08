@@ -90,7 +90,7 @@ export function DropdownInput({
               else onAdvance();
             }
           }}
-          className="tf-caret w-full bg-transparent text-[26px] sm:text-[28px] placeholder:text-ink-faint/70 focus:outline-none focus-visible:outline-none disabled:cursor-default"
+          className="tf-caret w-full bg-transparent text-[26px] @min-[640px]:text-[28px] placeholder:text-ink-faint/70 focus:outline-none focus-visible:outline-none disabled:cursor-default"
         />
         <ChevronDown className="shrink-0 text-ink-faint" />
       </div>

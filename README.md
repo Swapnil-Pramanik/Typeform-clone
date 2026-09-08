@@ -49,6 +49,9 @@ conversational flow.
 | | Per-form theme — question colour, background, font | Built |
 | | **Logic jumps** — a Logic dialog per block: branch on an answer, or always jump | Built |
 | | Form settings — display switches, and open/closed | Built |
+| | Desktop / phone preview frame, shared by the canvas and the full preview | Built |
+| | Full-screen preview of the real respondent flow, before publishing | Built |
+| | **Version history** — what each editing session changed, and a way back | Built |
 | **Publishing** | Publish / unpublish; slug minted once and kept forever | Built |
 | | Public fill page needing no account | Built |
 | **Respondent flow** | One question at a time, directional enter/exit transitions | Built |
@@ -76,7 +79,9 @@ draft: a customer-feedback and an event-registration form covering all eight
 question types between them, plus **Support triage**, a branching demo whose
 first answer decides whether the next question is asked at all. 19 responses
 including two partials, so the completion rate and the summary charts have
-something real to show, and both branches already have a submission.
+something real to show, and both branches already have a submission. Each
+published form also gets a short back-dated version history, so the history panel
+has something in it the moment the app is opened.
 
 ---
 
@@ -236,6 +241,7 @@ drift from what a respondent sees.
 │       │   ├── questions.py         # append, edit, soft delete, reorder
 │       │   ├── responses.py         # submit, list, summarize, CSV export
 │       │   ├── logic.py             # branching: next step, path, cycle check
+│       │   ├── versions.py          # snapshot, describe the change, restore
 │       │   └── validation.py        # validate_answer — the canonical rules
 │       └── routers/
 │           ├── deps.py              # session dependency + error translation
@@ -296,6 +302,8 @@ drift from what a respondent sees.
         │   │   ├── BuilderToolbar.tsx        # Add content · Design · tools
         │   │   ├── AddElementModal.tsx
         │   │   ├── FormSettingsModal.tsx    # General · Access · Language
+        │   │   ├── PreviewOverlay.tsx       # the real flow, unpublished
+        │   │   ├── HistoryPanel.tsx         # version history + restore
         │   │   ├── SaveIndicator.tsx
         │   │   └── Toggle.tsx
         │   ├── dashboard/
@@ -315,6 +323,7 @@ drift from what a respondent sees.
         │   ├── questionTypes.tsx             # block catalogue + groups
         │   ├── formTheme.ts                  # a form's theme as token overrides
         │   ├── formModes.ts                  # the four form modes, named once
+        │   ├── device.ts                     # the phone the builder previews in
         │   ├── logic.ts                      # mirror of services/logic.py
         │   ├── creator.ts                    # the single seeded creator
         │   ├── errors.ts                     # one place that names a failure
@@ -344,6 +353,7 @@ drift from what a respondent sees.
 | `services/questions.py` | `add_question` at `max(position)+1`, `update_question` (type changes in place), `delete_question` (soft), `reorder_questions`. |
 | `services/responses.py` | `submit_response` (validate → snapshot → store), `summarize_form` (aggregates batched one query per *kind* of question, not per question), `export_responses_csv` (streaming generator). |
 | `services/logic.py` | `next_question_id`, `path_taken`, `assert_no_cycles`. The branching rules, stated once and mirrored by `lib/logic.ts`. |
+| `services/versions.py` | `snapshot_form`, `describe`, `record_version`, `restore_version`. Version history: whole-form snapshots, coalesced per editing session. |
 | `services/validation.py` | `validate_answer(question, raw) -> TypedValue`. The rules, written once, in a docstring the TypeScript mirror points back to. |
 | `routers/deps.py` | The session dependency and the three exception→HTTP translations. |
 | `routers/*.py` | Parse, call a service, return. |
@@ -492,6 +502,16 @@ CREATE TABLE answers (
   UNIQUE(response_id, question_id)
 );
 CREATE INDEX ix_answers_question ON answers (question_id);
+
+CREATE TABLE form_versions (
+  id          INTEGER PRIMARY KEY,
+  form_id     INTEGER NOT NULL REFERENCES forms(id) ON DELETE CASCADE,
+  created_at  DATETIME NOT NULL,
+  kind        VARCHAR(16) NOT NULL DEFAULT 'edit',  -- edit|publish|unpublish|restore
+  summary     TEXT NOT NULL,                        -- what changed, written on save
+  snapshot    TEXT NOT NULL                         -- JSON: the whole form
+);
+CREATE INDEX ix_form_versions_form ON form_versions (form_id, created_at);
 ```
 
 ### Decision 1 — typed answer columns, not a JSON blob
@@ -584,6 +604,30 @@ before touching the database, so closing a form is enforced by the server whethe
 the respondent is looking at our flow or posting to the endpoint directly. A
 switch the client could ignore would not be access control.
 
+### Decision 5 — history is snapshots, coalesced per editing session
+
+`form_versions` holds the whole form as JSON, once per version. A log of
+individual edits would be smaller, but a log is only usable by replaying it, and
+replaying is exactly what breaks when a block was deleted halfway along. A
+snapshot restores by being applied, which is the operation the feature exists to
+perform.
+
+The builder autosaves on a 600ms debounce, so a version per write would bury the
+history in noise. Consecutive edits fold into one row while they keep arriving
+within three minutes; publishing, unpublishing and restoring always start a
+fresh row, because those are the moments an author would actually come back to.
+
+`summary` is computed once, when the row is written, by diffing against the
+previous snapshot. Diffing at read time would make old history re-render
+differently every time that code changed; written down at the moment it
+happened, “Added ‘What went wrong?’” stays true.
+
+Restoring matches blocks by ID where the row still exists, so a rolled-back
+block keeps the answers already collected against it, and a block added since is
+soft-deleted rather than dropped — the same rule every other deletion follows.
+Status and slug are left alone: they are the form's live identity, not part of
+what an author is rolling back.
+
 ### Deliberately absent: a users table
 
 There is no auth and no `users` table. See §14.
@@ -615,6 +659,8 @@ Interactive docs at `/docs` when the backend is running.
 | `GET` | `/api/responses/{id}` | One submission in full. |
 | `GET` | `/api/forms/{id}/summary` | Per-question aggregates + completion rate. |
 | `GET` | `/api/forms/{id}/responses.csv` | Streaming CSV export. |
+| `GET` | `/api/forms/{id}/versions` | Version history, newest first. The snapshots stay server-side. |
+| `POST` | `/api/forms/{id}/versions/{vid}/restore` | Roll the form back to that version. Recorded, so it can be undone. |
 
 ### Public surface — `/api/f/{slug}`
 
@@ -928,6 +974,11 @@ invariant the design rests on rather than one function:
 | `test_a_required_question_on_the_taken_branch_still_blocks` | …and one on the path taken still does. |
 | `test_a_loop_is_refused_when_the_rule_is_written` | A rule set that cycles is rejected, and leaves nothing behind. |
 | `test_a_rule_pointing_at_a_deleted_question_is_ignored` | Soft-deleting a target cannot strand a respondent. |
+| `test_edits_collapse_into_one_entry_but_publishing_starts_a_new_one` | The autosave fires constantly; the history stays readable anyway. |
+| `test_restoring_brings_back_a_deleted_block_and_its_answers` | **The rollback risk.** Reviving by ID keeps collected answers attached. |
+| `test_restoring_is_itself_recorded_so_it_can_be_undone` | A history you can fall out of would be worse than none. |
+| `test_restoring_does_not_republish_a_form` | Status is live identity, not part of what is rolled back. |
+| `test_a_version_from_another_form_is_refused` | A version ID from a different form is a 404, not a cross-form restore. |
 | `test_always_skips_the_next_question_whatever_the_answer` | "Always go to" takes the block off the path, so its required flag cannot block. |
 | `test_conditional_rules_outrank_the_always_rule_below_them` | List order really is precedence: the catch-all only fires once the others decline. |
 | `test_always_replaces_the_fall_through_rather_than_racing_it` | The cycle checker stops believing in an edge the always rule removed. |
@@ -980,6 +1031,7 @@ product puts the feature:
 | Builder → *Connect* tab | Webhooks, Google Sheets, Slack, Zapier, HubSpot, Airtable |
 | Toolbar → mode pill, Form settings → *Form mode* | Lead qualification, Knowledge quiz and Match quiz. Only Universal is modelled. |
 | Settings panel → *Comments* | Per-block comments. (*Logic* is real — see assumption 11.) |
+| Toolbar → *Accessibility check*, *Translations* | A contrast and screen-reader audit; respondent-facing translations |
 | Logic dialog → *Question display*, *Hide answer choices* | Showing or hiding a block, or individual choices, from a condition |
 | Logic dialog → *Calculations* | Scores and variables accumulated across answers |
 | Form settings → *Access & Scheduling* | Scheduling a close date, a response limit, and a password. Open/closed is real. |

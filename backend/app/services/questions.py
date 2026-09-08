@@ -15,6 +15,7 @@ from app.models import (
 from app.schemas import FormOut, QuestionCreate, QuestionUpdate, RuleIn
 from app.services.forms import FormError, get_form, load_form_or_raise
 from app.services.logic import LogicError, assert_no_cycles
+from app.services.versions import record_version
 
 #: Sensible starting options so a fresh choice block is immediately editable.
 DEFAULT_CHOICE_LABELS = ["Option 1", "Option 2", "Option 3"]
@@ -77,6 +78,7 @@ def add_question(db: Session, form_id: int, payload: QuestionCreate) -> Question
 
     db.add(question)
     db.commit()
+    record_version(db, load_form_or_raise(db, form_id))
     return _load_question(db, question.id)
 
 
@@ -102,6 +104,7 @@ def update_question(
         _replace_options(question, DEFAULT_CHOICE_LABELS)
 
     db.commit()
+    record_version(db, load_form_or_raise(db, question.form_id))
     return _load_question(db, question_id)
 
 
@@ -116,6 +119,7 @@ def delete_question(db: Session, question_id: int) -> None:
     question = _load_question(db, question_id)
     question.deleted_at = datetime.now(timezone.utc)
     db.commit()
+    record_version(db, load_form_or_raise(db, question.form_id))
 
 
 def reorder_questions(db: Session, form_id: int, question_ids: list[int]) -> FormOut:
@@ -135,6 +139,7 @@ def reorder_questions(db: Session, form_id: int, question_ids: list[int]) -> For
         live[question_id].position = position
 
     db.commit()
+    record_version(db, form)
     return get_form(db, form_id)
 
 
@@ -174,4 +179,5 @@ def set_rules(db: Session, question_id: int, rules: list[RuleIn]) -> Question:
         raise QuestionError(str(error)) from error
 
     db.commit()
+    record_version(db, load_form_or_raise(db, question.form_id))
     return _load_question(db, question_id)

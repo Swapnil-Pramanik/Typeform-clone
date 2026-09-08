@@ -16,7 +16,7 @@ export function ClosedScreen({ title }: { title: string }) {
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-choice text-ink-muted">
         <Lock width={22} height={22} />
       </span>
-      <h1 className="text-[28px] leading-tight font-medium text-ink sm:text-[32px]">
+      <h1 className="text-[28px] leading-tight font-medium text-ink @min-[640px]:text-[32px]">
         {title}
       </h1>
       <p className="text-[17px] text-ink-muted">

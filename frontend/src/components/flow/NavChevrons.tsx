@@ -13,6 +13,8 @@ interface NavChevronsProps {
   /** Form settings. With both off the corner is empty and nothing renders. */
   showArrows?: boolean;
   showBranding?: boolean;
+  /** Position inside the nearest positioned box instead of the viewport. */
+  contained?: boolean;
 }
 
 const BUTTON =
@@ -25,11 +27,17 @@ export function NavChevrons({
   canGoDown,
   showArrows = true,
   showBranding = true,
+  contained = false,
 }: NavChevronsProps) {
   if (!showArrows && !showBranding) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-30 flex items-center gap-3">
+    <div
+      className={cn(
+        contained ? "absolute" : "fixed",
+        "bottom-5 right-5 z-30 flex items-center gap-3",
+      )}
+    >
       {showBranding && (
       <a
         href="https://www.typeform.com"

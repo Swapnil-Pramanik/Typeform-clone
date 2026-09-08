@@ -163,3 +163,34 @@ class QuestionOption(Base):
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
     question: Mapped[Question] = relationship(back_populates="options")
+
+
+class FormVersion(Base):
+    """A snapshot of a form as it stood at one moment, plus what changed.
+
+    Kept as a whole-form JSON blob rather than a change log. A log of edits is
+    smaller but only usable by replaying it, and replaying is exactly what goes
+    wrong when a block was deleted halfway along. A snapshot restores by being
+    applied, which is the operation the feature actually needs.
+
+    ``summary`` is computed once, when the row is written, by diffing against
+    the previous snapshot. Doing it here rather than at read time means the
+    history reads the same in a year, when the diffing code has moved on.
+    """
+
+    __tablename__ = "form_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    form_id: Mapped[int] = mapped_column(
+        ForeignKey("forms.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=utcnow, server_default=func.now()
+    )
+    #: ``edit`` | ``publish`` | ``unpublish`` | ``restore`` — what put this
+    #: version here. Only ``edit`` rows coalesce; the rest are landmarks.
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="edit")
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    snapshot: Mapped[dict] = mapped_column(JSONText, nullable=False)
+
+    __table_args__ = (Index("ix_form_versions_form", "form_id", "created_at"),)

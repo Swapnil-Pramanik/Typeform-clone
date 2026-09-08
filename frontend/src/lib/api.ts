@@ -10,6 +10,7 @@ import type {
   FormSettings,
   FormSummary,
   FormSummaryStats,
+  FormVersion,
   FormTheme,
   PublicForm,
   Question,
@@ -175,6 +176,14 @@ export const api = {
 
   getSummary: (formId: number) =>
     request<FormSummaryStats>(`/api/forms/${formId}/summary`),
+
+  listVersions: (formId: number) =>
+    request<FormVersion[]>(`/api/forms/${formId}/versions`),
+
+  restoreVersion: (formId: number, versionId: number) =>
+    request<Form>(`/api/forms/${formId}/versions/${versionId}/restore`, {
+      method: "POST",
+    }),
 
   csvUrl: (formId: number) => `${API_BASE}/api/forms/${formId}/responses.csv`,
 

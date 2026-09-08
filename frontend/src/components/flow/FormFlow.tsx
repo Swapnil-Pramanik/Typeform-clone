@@ -23,7 +23,9 @@ import {
 } from "@/components/flow/motion";
 import { useFormFlow } from "@/components/flow/useFormFlow";
 import { QuestionRenderer } from "@/components/render/QuestionRenderer";
+import { resolveEnding } from "@/lib/logic";
 import { ApiError, API_BASE, api } from "@/lib/api";
+import { cn } from "@/lib/format";
 import { formSurface } from "@/lib/formTheme";
 import { useHotkeys, usePrefersReducedMotion } from "@/lib/hooks";
 import {
@@ -32,7 +34,21 @@ import {
   type PublicForm,
 } from "@/types";
 
-export function FormFlow({ form }: { form: PublicForm }) {
+/**
+ * `preview` is the builder's rehearsal of this same component.
+ *
+ * Nothing is written: no response row, no partial-response beacon. The ending
+ * is resolved client-side by the mirrored rule instead of arriving with the
+ * submission, so a branched form still shows the ending that branch really
+ * leads to.
+ */
+export function FormFlow({
+  form,
+  preview = false,
+}: {
+  form: PublicForm;
+  preview?: boolean;
+}) {
   const settings = { ...DEFAULT_FORM_SETTINGS, ...(form.settings ?? {}) };
   const flow = useFormFlow(form);
   const reduced = usePrefersReducedMotion();
@@ -58,6 +74,22 @@ export function FormFlow({ form }: { form: PublicForm }) {
 
   const submit = useCallback(async () => {
     if (submitted.current) return;
+
+    if (preview) {
+      const reached = resolveEnding(form.questions, getAnswers());
+      submitted.current = true;
+      setEnding(
+        reached && {
+          id: reached.id,
+          title: reached.title,
+          description: reached.description,
+          settings: reached.settings ?? {},
+        },
+      );
+      flow.finish();
+      return;
+    }
+
     setPending(true);
     try {
       const result = await api.submitResponse(form.slug, {
@@ -82,7 +114,7 @@ export function FormFlow({ form }: { form: PublicForm }) {
     } finally {
       setPending(false);
     }
-  }, [flow, form.slug, payload]);
+  }, [flow, form.questions, form.slug, getAnswers, payload, preview]);
 
   const onAdvance = useCallback(() => {
     const ok = flow.advance();
@@ -121,6 +153,7 @@ export function FormFlow({ form }: { form: PublicForm }) {
    */
   useEffect(() => {
     const onHide = () => {
+      if (preview) return; // a rehearsal must not record a partial response
       if (submitted.current || document.visibilityState !== "hidden") return;
       const answers = payload();
       if (answers.length === 0) return;
@@ -135,7 +168,7 @@ export function FormFlow({ form }: { form: PublicForm }) {
 
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
-  }, [form.slug, payload]);
+  }, [form.slug, payload, preview]);
 
   const transition = reduced ? reducedTransition : stepTransition;
   const variants = stepVariants(reduced);
@@ -143,13 +176,30 @@ export function FormFlow({ form }: { form: PublicForm }) {
   return (
     <main
       /* text-ink so inherited colours resolve against this surface, not <body>. */
-      className="relative min-h-dvh overflow-hidden bg-bg font-[family-name:var(--font-form)] text-ink"
+      className={cn(
+        // A container, not the viewport: every breakpoint below is a container
+        // query, so the flow lays itself out against the box it was given —
+        // a 390px phone frame in the builder gets the phone layout even though
+        // the window behind it is wide.
+        //
+        // The widths are spelled out rather than using `@sm`/`@lg`, whose
+        // container-query scale (384px, 512px) is not the viewport scale these
+        // rules were written against. Pinning 640px and 1024px keeps the public
+        // page pixel-identical, where the container *is* the window.
+        "@container bg-bg font-[family-name:var(--font-form)] text-ink",
+        // In a preview the flow fills the box it was given rather than the
+        // viewport: `dvh` and `fixed` both measure the window, which is exactly
+        // wrong inside a phone frame 760px tall.
+        preview
+          ? "absolute inset-0 overflow-y-auto"
+          : "relative min-h-dvh overflow-hidden",
+      )}
       style={formSurface(form.theme)}
     >
       {form.accepting_responses === false ? (
-        <div className="flex min-h-dvh items-center">
-          <div className="w-full px-6 py-24 sm:px-10 lg:pl-[26vw] lg:pr-16">
-            <div className="flex justify-center lg:justify-start">
+        <div className={cn("flex items-center", preview ? "min-h-full" : "min-h-dvh")}>
+          <div className="w-full px-6 py-24 @min-[640px]:px-10 @min-[1024px]:pl-[26cqw] @min-[1024px]:pr-16">
+            <div className="flex justify-center @min-[1024px]:justify-start">
               <ClosedScreen title={form.title} />
             </div>
           </div>
@@ -157,11 +207,11 @@ export function FormFlow({ form }: { form: PublicForm }) {
       ) : (
         <>
           {flow.phase === "question" && settings.show_progress_bar && (
-            <ProgressBar value={flow.progress} />
+            <ProgressBar value={flow.progress} contained={preview} />
           )}
 
-          <div className="flex min-h-dvh items-center">
-            <div className="w-full px-6 py-24 sm:px-10 lg:pl-[26vw] lg:pr-16">
+          <div className={cn("flex items-center", preview ? "min-h-full" : "min-h-dvh")}>
+            <div className="w-full px-6 py-24 @min-[640px]:px-10 @min-[1024px]:pl-[26cqw] @min-[1024px]:pr-16">
               <AnimatePresence
                 mode="wait"
                 custom={flow.direction}
@@ -176,7 +226,7 @@ export function FormFlow({ form }: { form: PublicForm }) {
                     animate="center"
                     exit="exit"
                     transition={transition}
-                    className="flex justify-center lg:justify-start"
+                    className="flex justify-center @min-[1024px]:justify-start"
                   >
                     <WelcomeScreen
                       data={form.welcome_screen}
@@ -227,7 +277,7 @@ export function FormFlow({ form }: { form: PublicForm }) {
                     animate="center"
                     exit="exit"
                     transition={transition}
-                    className="flex justify-center lg:justify-start"
+                    className="flex justify-center @min-[1024px]:justify-start"
                   >
                     <EndingScreen
                       ending={ending}
@@ -251,6 +301,7 @@ export function FormFlow({ form }: { form: PublicForm }) {
               canGoDown={!pending}
               showArrows={settings.show_navigation_arrows}
               showBranding={settings.show_branding}
+              contained={preview}
             />
           )}
         </>

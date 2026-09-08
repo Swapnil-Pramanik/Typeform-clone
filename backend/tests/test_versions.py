@@ -1,0 +1,148 @@
+"""Version history: what gets recorded, what it says, and what restoring does."""
+
+import pytest
+
+from app.services import versions as version_service
+
+
+@pytest.fixture
+def form(client):
+    """A published two-question form, so history already has a few entries."""
+    created = client.post("/api/forms", json={"title": "Feedback"}).json()
+
+    def add(payload):
+        return client.post(f"/api/forms/{created['id']}/questions", json=payload).json()
+
+    first = add({"type": "short_text", "title": "Your name?", "required": True})
+    second = add({"type": "rating", "title": "How did we do?"})
+    return {"id": created["id"], "first": first, "second": second}
+
+
+def versions(client, form_id):
+    return client.get(f"/api/forms/{form_id}/versions").json()
+
+
+def test_edits_collapse_into_one_entry_but_publishing_starts_a_new_one(client, form):
+    """The autosave fires constantly; the history must stay readable anyway."""
+    history = versions(client, form["id"])
+    assert len(history) == 1, [v["summary"] for v in history]
+    assert history[0]["kind"] == "edit"
+    assert history[0]["is_current"] is True
+
+    client.post(f"/api/forms/{form['id']}/publish")
+    history = versions(client, form["id"])
+    assert [v["kind"] for v in history] == ["publish", "edit"]
+    assert "Published" in history[0]["summary"]
+
+
+def test_a_write_that_changes_nothing_is_not_recorded(client, form):
+    before = versions(client, form["id"])
+    client.patch(f"/api/forms/{form['id']}", json={"title": "Feedback"})
+    assert versions(client, form["id"]) == before
+
+
+def test_the_summary_names_what_changed(client, form):
+    client.post(f"/api/forms/{form['id']}/publish")  # close the editing session
+
+    client.patch(
+        f"/api/questions/{form['first']['id']}", json={"title": "What is your name?"}
+    )
+    assert "Edited “What is your name?”" in versions(client, form["id"])[0]["summary"]
+
+    client.post(f"/api/forms/{form['id']}/publish")
+    client.delete(f"/api/questions/{form['second']['id']}")
+    assert "Deleted “How did we do?”" in versions(client, form["id"])[0]["summary"]
+
+    client.post(f"/api/forms/{form['id']}/publish")
+    client.patch(f"/api/forms/{form['id']}", json={"title": "Renamed"})
+    assert "Renamed the form" in versions(client, form["id"])[0]["summary"]
+
+
+def test_a_reorder_is_reported_as_a_reorder_not_as_edits(client, form):
+    """Position is excluded from the block diff so moving blocks says so."""
+    client.post(f"/api/forms/{form['id']}/publish")
+    order = [q["id"] for q in client.get(f"/api/forms/{form['id']}").json()["questions"]]
+    client.put(
+        f"/api/forms/{form['id']}/questions/order",
+        json={"question_ids": list(reversed(order))},
+    )
+    summary = versions(client, form["id"])[0]["summary"]
+    assert summary == "Reordered blocks", summary
+
+
+def test_restoring_brings_back_a_deleted_block_and_its_answers(client, form):
+    """The whole point: a rollback must not orphan what was already collected."""
+    slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+    client.post(
+        f"/api/f/{slug}/responses",
+        json={
+            "answers": [
+                {"question_id": form["first"]["id"], "value": "Ada"},
+                {"question_id": form["second"]["id"], "value": 5},
+            ]
+        },
+    )
+    good = versions(client, form["id"])[0]["id"]
+
+    client.delete(f"/api/questions/{form['second']['id']}")
+    live = client.get(f"/api/forms/{form['id']}").json()["questions"]
+    assert form["second"]["id"] not in [q["id"] for q in live]
+
+    restored = client.post(f"/api/forms/{form['id']}/versions/{good}/restore")
+    assert restored.status_code == 200, restored.text
+
+    live = client.get(f"/api/forms/{form['id']}").json()["questions"]
+    assert form["second"]["id"] in [q["id"] for q in live]
+
+    # Revived by ID, so the answer collected against it still resolves.
+    rows = client.get(f"/api/forms/{form['id']}/responses").json()["items"]
+    assert len(rows) == 1
+    assert len(rows[0]["answers"]) == 2
+
+
+def test_restoring_is_itself_recorded_so_it_can_be_undone(client, form):
+    client.post(f"/api/forms/{form['id']}/publish")
+    original = versions(client, form["id"])[0]["id"]
+
+    client.patch(f"/api/questions/{form['first']['id']}", json={"title": "Changed"})
+    after_edit = versions(client, form["id"])[0]["id"]
+
+    client.post(f"/api/forms/{form['id']}/versions/{original}/restore")
+    history = versions(client, form["id"])
+    assert history[0]["kind"] == "restore"
+
+    # Rolling forward again reaches the edit that was rolled back.
+    client.post(f"/api/forms/{form['id']}/versions/{after_edit}/restore")
+    live = client.get(f"/api/forms/{form['id']}").json()["questions"]
+    first = next(q for q in live if q["id"] == form["first"]["id"])
+    assert first["title"] == "Changed"
+
+
+def test_restoring_does_not_republish_a_form(client, form):
+    """Status is the form's live identity, not part of what is rolled back."""
+    client.post(f"/api/forms/{form['id']}/publish")
+    published = versions(client, form["id"])[0]["id"]
+    client.post(f"/api/forms/{form['id']}/unpublish")
+
+    client.post(f"/api/forms/{form['id']}/versions/{published}/restore")
+    assert client.get(f"/api/forms/{form['id']}").json()["status"] == "draft"
+
+
+def test_a_version_from_another_form_is_refused(client, form):
+    other = client.post("/api/forms", json={"title": "Other"}).json()
+    client.post(f"/api/forms/{other['id']}/questions", json={"type": "email", "title": "Mail"})
+    stolen = versions(client, other["id"])[0]["id"]
+
+    refused = client.post(f"/api/forms/{form['id']}/versions/{stolen}/restore")
+    assert refused.status_code == 404
+
+
+def test_history_is_capped(client, form, monkeypatch):
+    """A long editing afternoon must not grow the table without bound."""
+    monkeypatch.setattr(version_service, "MAX_VERSIONS", 3)
+    for index in range(6):
+        client.patch(f"/api/forms/{form['id']}", json={"title": f"Title {index}"})
+        client.post(f"/api/forms/{form['id']}/publish")  # non-edit: never coalesces
+        client.post(f"/api/forms/{form['id']}/unpublish")
+
+    assert len(versions(client, form["id"])) <= 3

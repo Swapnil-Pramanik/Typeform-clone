@@ -1,13 +1,30 @@
 "use client";
 
-/** The progress bar runs along the TOP edge of the viewport, as in the real app. */
+/**
+ * The progress bar runs along the TOP edge, as in the real app.
+ *
+ * `contained` swaps `fixed` for `absolute` so the builder's preview keeps it
+ * inside the frame it is drawn in. On the public page it stays fixed, which is
+ * what keeps it in place when a long question scrolls.
+ */
 
 import { motion } from "framer-motion";
 
-export function ProgressBar({ value }: { value: number }) {
+import { cn } from "@/lib/format";
+
+export function ProgressBar({
+  value,
+  contained = false,
+}: {
+  value: number;
+  contained?: boolean;
+}) {
   return (
     <div
-      className="fixed inset-x-0 top-0 z-30 h-[3px] bg-line/70"
+      className={cn(
+        contained ? "absolute" : "fixed",
+        "inset-x-0 top-0 z-30 h-[3px] bg-line/70",
+      )}
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}

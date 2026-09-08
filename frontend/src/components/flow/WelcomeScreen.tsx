@@ -23,7 +23,7 @@ interface WelcomeScreenProps {
 }
 
 const TITLE_CLASS =
-  "text-[32px] leading-tight font-medium text-ink sm:text-[40px]";
+  "text-[32px] leading-tight font-medium text-ink @min-[640px]:text-[40px]";
 
 export function WelcomeScreen({
   data,

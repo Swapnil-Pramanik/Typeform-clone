@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import StreamingResponse
 
+from app.models import FormVersion
 from app.routers.deps import DbSession, FormError, bad_request, not_found
 from app.schemas import (
     FormCreate,
@@ -10,6 +11,7 @@ from app.schemas import (
     FormSummaryOut,
     FormSummaryStats,
     FormUpdate,
+    FormVersionOut,
     QuestionCreate,
     QuestionOrderIn,
     QuestionOut,
@@ -18,6 +20,7 @@ from app.schemas import (
 from app.services import forms as form_service
 from app.services import questions as question_service
 from app.services import responses as response_service
+from app.services import versions as version_service
 
 router = APIRouter(prefix="/api/forms", tags=["forms"])
 
@@ -131,3 +134,51 @@ def export_csv(form_id: int, db: DbSession):
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/{form_id}/versions", response_model=list[FormVersionOut])
+def list_versions(form_id: int, db: DbSession):
+    """The form's history, newest first.
+
+    The newest entry is flagged as current only when it still matches the form
+    on disk; after an edit that has not yet been recorded — or on a form with no
+    history at all — nothing is current, which is the honest answer.
+    """
+    try:
+        form = form_service.load_form_or_raise(db, form_id)
+    except FormError as error:
+        raise not_found(error) from error
+
+    current = version_service.snapshot_form(form)
+    versions = version_service.list_versions(db, form_id)
+    return [
+        FormVersionOut(
+            id=version.id,
+            created_at=version.created_at,
+            kind=version.kind,
+            summary=version.summary,
+            is_current=index == 0 and version.snapshot == current,
+        )
+        for index, version in enumerate(versions)
+    ]
+
+
+@router.post("/{form_id}/versions/{version_id}/restore", response_model=FormOut)
+def restore_version(form_id: int, version_id: int, db: DbSession):
+    """Roll the form back to one of its versions.
+
+    The restore is itself recorded, so rolling back is undoable by rolling
+    forward — a history you can fall out of would be worse than none.
+    """
+    try:
+        form = form_service.load_form_or_raise(db, form_id)
+    except FormError as error:
+        raise not_found(error) from error
+
+    version = db.get(FormVersion, version_id)
+    if version is None or version.form_id != form_id:
+        raise not_found(FormError("That version is not part of this form."))
+
+    version_service.restore_version(db, form, version)
+    version_service.record_version(db, form, kind="restore")
+    return form_service.get_form(db, form_id)

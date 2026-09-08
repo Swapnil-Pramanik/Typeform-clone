@@ -1,7 +1,5 @@
 "use client";
 
-import { Fragment } from "react";
-
 /**
  * The strip above the canvas: what you can add, and how you can look at it.
  *
@@ -9,10 +7,9 @@ import { Fragment } from "react";
  * block list and the tools over the canvas, so the strip lines up with the
  * columns beneath it rather than running as one bar across both.
  *
- * Add content, Design and Form settings do something. The rest are the real
- * product's inspection tools — device preview, preview, accessibility check,
- * undo, translation — kept in place so the toolbar reads as itself, and each
- * says so when pressed.
+ * Everything here works except the accessibility check and translations, which
+ * are the two the form engine has nothing to say about; they announce
+ * themselves rather than sitting dead.
  */
 
 import { comingSoonProps, useComingSoon } from "@/components/ui/ComingSoon";
@@ -20,21 +17,27 @@ import { Dropdown } from "@/components/ui/Dropdown";
 import {
   Accessibility,
   Device,
+  History,
+  Layers,
+  Monitor,
   Palette,
   Play,
   Plus,
-  Layers,
   Settings,
   Translate,
-  Undo,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/format";
 import { FORM_MODES, UNIVERSAL, modeLabel } from "@/lib/formModes";
+import type { ViewDevice } from "@/types";
 
 interface BuilderToolbarProps {
   onAddContent: () => void;
   onOpenDesign: () => void;
   onOpenSettings: () => void;
+  onPreview: () => void;
+  onOpenHistory: () => void;
+  device: ViewDevice;
+  onDevice: (device: ViewDevice) => void;
   designActive: boolean;
 }
 
@@ -42,17 +45,19 @@ export function BuilderToolbar({
   onAddContent,
   onOpenDesign,
   onOpenSettings,
+  onPreview,
+  onOpenHistory,
+  device,
+  onDevice,
   designActive,
 }: BuilderToolbarProps) {
   const comingSoon = useComingSoon();
 
   // The divider after Play is the real toolbar's own grouping: how the form is
-  // *viewed* on the left of it, what is *checked* on the right.
-  const TOOLS: { icon: typeof Device; label: string; dividerBefore?: boolean }[] = [
-    { icon: Device, label: "Mobile preview" },
-    { icon: Play, label: "Preview the form" },
-    { icon: Accessibility, label: "Accessibility check", dividerBefore: true },
-    { icon: Undo, label: "Undo and redo" },
+  // *viewed* on the left of it, what is *checked* on the right. Only the two
+  // unbuilt checks announce themselves.
+  const CHECKS = [
+    { icon: Accessibility, label: "Accessibility check" },
     { icon: Translate, label: "Translations" },
   ];
 
@@ -101,20 +106,28 @@ export function BuilderToolbar({
 
       <span aria-hidden="true" className="mx-1.5 h-5 w-px bg-line-strong" />
 
-      {TOOLS.map(({ icon: Icon, label, dividerBefore }) => (
-        <Fragment key={label}>
-          {dividerBefore && (
-            <span aria-hidden="true" className="mx-1.5 h-5 w-px bg-line-strong" />
-          )}
-          <button
-            type="button"
-            {...comingSoonProps(comingSoon, label)}
-            className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-muted hover:text-ink"
-          >
-            <Icon width={17} height={17} />
-          </button>
-        </Fragment>
+      <Tool
+        icon={device === "mobile" ? Monitor : Device}
+        label={device === "mobile" ? "Desktop view" : "Mobile view"}
+        active={device === "mobile"}
+        onClick={() => onDevice(device === "mobile" ? "desktop" : "mobile")}
+      />
+      <Tool icon={Play} label="Preview the form" onClick={onPreview} />
+
+      <span aria-hidden="true" className="mx-1.5 h-5 w-px bg-line-strong" />
+
+      {CHECKS.map(({ icon: Icon, label }) => (
+        <button
+          key={label}
+          type="button"
+          {...comingSoonProps(comingSoon, label)}
+          className="rounded-lg p-2 text-ink-muted transition-colors hover:bg-muted hover:text-ink"
+        >
+          <Icon width={17} height={17} />
+        </button>
       ))}
+
+      <Tool icon={History} label="Version history" onClick={onOpenHistory} />
 
       <button
         type="button"
@@ -127,5 +140,36 @@ export function BuilderToolbar({
       </button>
       </div>
     </div>
+  );
+}
+
+/** One icon button in the strip, for the tools that do something. */
+function Tool({
+  icon: Icon,
+  label,
+  onClick,
+  active = false,
+}: {
+  icon: (props: { width: number; height: number }) => React.ReactElement;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      className={cn(
+        "rounded-lg p-2 transition-colors",
+        active
+          ? "bg-muted-strong text-ink"
+          : "text-ink-muted hover:bg-muted hover:text-ink",
+      )}
+    >
+      <Icon width={17} height={17} />
+    </button>
   );
 }

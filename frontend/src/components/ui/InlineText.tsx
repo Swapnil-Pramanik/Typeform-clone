@@ -37,11 +37,24 @@ export function InlineText({
 
   // Height is driven by content, so the preview reflows exactly as the
   // respondent flow will.
+  //
+  // Watched with a ResizeObserver, not just keyed on `value`: the text also
+  // rewraps when the box changes width — switching the canvas to the phone
+  // frame does exactly that — and a height measured for one line then clipped
+  // the second, because the textarea hides its own overflow.
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
-    node.style.height = "auto";
-    node.style.height = `${node.scrollHeight}px`;
+
+    const fit = () => {
+      node.style.height = "auto";
+      node.style.height = `${node.scrollHeight}px`;
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(node);
+    return () => observer.disconnect();
   }, [value]);
 
   useEffect(() => {

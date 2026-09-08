@@ -235,6 +235,12 @@ export const Palette = (p: IconProps) => (
     <circle cx="7.5" cy="11" r="1" /><circle cx="10" cy="7.5" r="1" /><circle cx="14.5" cy="7.5" r="1" />
   </Icon>
 );
+export const Monitor = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="2.5" y="4" width="19" height="13" rx="2" />
+    <path d="M9 20.5h6M12 17v3.5" />
+  </Icon>
+);
 export const Device = (p: IconProps) => (
   <Icon {...p}>
     <rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M10.5 18.5h3" />
@@ -252,8 +258,8 @@ export const Accessibility = (p: IconProps) => (
     <path d="M7.8 10.2h8.4M12 10.4v3.4m0 0-2 4.2m2-4.2 2 4.2" />
   </Icon>
 );
-/** Undo and redo, so the arrow curls back on itself and trails its history. */
-export const Undo = (p: IconProps) => (
+/** Version history: the arrow curls back on itself and trails its past. */
+export const History = (p: IconProps) => (
   <Icon {...p}>
     <path d="M13.5 19a7 7 0 1 0-6.8-8.7" />
     <path d="m3.6 6.2.7 4.6 4.6-.7" />

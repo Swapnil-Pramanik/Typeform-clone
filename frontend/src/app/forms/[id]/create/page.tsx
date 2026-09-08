@@ -13,6 +13,8 @@ import { AddElementModal } from "@/components/builder/AddElementModal";
 import { BuilderToolbar } from "@/components/builder/BuilderToolbar";
 import { FormSettingsModal } from "@/components/builder/FormSettingsModal";
 import { FormShell } from "@/components/builder/FormShell";
+import { HistoryPanel } from "@/components/builder/HistoryPanel";
+import { PreviewOverlay } from "@/components/builder/PreviewOverlay";
 import { PreviewPane } from "@/components/builder/PreviewPane";
 import { DesignSettings } from "@/components/builder/DesignSettings";
 import { LogicModal, type RuleChange } from "@/components/builder/LogicModal";
@@ -32,7 +34,7 @@ import { LoadingPane } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/lib/errors";
 import { BLOCKS } from "@/lib/questionTypes";
-import type { QuestionType } from "@/types";
+import type { QuestionType, ViewDevice } from "@/types";
 
 export default function BuilderPage({
   params,
@@ -47,6 +49,11 @@ export default function BuilderPage({
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [logicOpen, setLogicOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  // The canvas frame and the full preview share one device, so switching in
+  // either place is switching the same thing.
+  const [device, setDevice] = useState<ViewDevice>("desktop");
 
   const questions = useMemo(
     () => builder.form?.questions ?? [],
@@ -151,6 +158,10 @@ export default function BuilderPage({
           onAddContent={() => setAddOpen(true)}
           onOpenDesign={() => setChosen(DESIGN)}
           onOpenSettings={() => setSettingsOpen(true)}
+          onPreview={() => setPreviewOpen(true)}
+          onOpenHistory={() => setHistoryOpen(true)}
+          device={device}
+          onDevice={setDevice}
           designActive={selection.kind === "design"}
         />
       }
@@ -192,6 +203,7 @@ export default function BuilderPage({
             }
             formTitle={builder.form?.title ?? ""}
             theme={builder.form?.theme ?? null}
+            device={device}
           />
 
           {selection.kind === "design" ? (
@@ -225,6 +237,21 @@ export default function BuilderPage({
               }}
             />
           )}
+
+          <PreviewOverlay
+            open={previewOpen}
+            onClose={() => setPreviewOpen(false)}
+            form={builder.form ?? null}
+            device={device}
+            onDevice={setDevice}
+          />
+
+          <HistoryPanel
+            open={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+            formId={formId}
+            onRestored={() => toast.show("Version restored", "success")}
+          />
 
           <LogicModal
             open={logicOpen}

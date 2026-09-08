@@ -23,8 +23,13 @@ interface QuestionHeaderProps {
   showRequiredAsterisk?: boolean;
 }
 
+// `min-w-0 flex-1` is load-bearing: the title sits in a flex row beside the
+// number badge, and a flex item defaults to `min-width: auto` — it refuses to
+// shrink below its content. At 390px that pushed the row wider than the card,
+// and because the column stretches to its widest child it took the description
+// out with it. Both were clipped by the card's overflow.
 const TITLE_CLASS =
-  "text-[26px] sm:text-[30px] leading-snug font-normal text-ink";
+  "min-w-0 flex-1 text-[26px] @min-[640px]:text-[30px] leading-snug font-normal text-ink";
 
 export function QuestionHeader({
   question,

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import Form, FormStatus, Question, QuestionOption, Response
 from app.schemas import FormCreate, FormOut, FormSummaryOut, FormUpdate
 from app.services.logic import LogicError, assert_no_cycles
+from app.services.versions import record_version
 
 SLUG_SUFFIX_LENGTH = 6
 _SLUG_CLEAN_RE = re.compile(r"[^a-z0-9]+")
@@ -141,6 +142,7 @@ def update_form(db: Session, form_id: int, payload: FormUpdate) -> FormOut:
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(form, field, value)
     db.commit()
+    record_version(db, form)
     return get_form(db, form_id)
 
 
@@ -179,6 +181,7 @@ def publish_form(db: Session, form_id: int) -> FormOut:
     form.status = FormStatus.PUBLISHED
     form.published_at = datetime.now(timezone.utc)
     db.commit()
+    record_version(db, form, kind="publish")
     return get_form(db, form_id)
 
 
@@ -187,6 +190,7 @@ def unpublish_form(db: Session, form_id: int) -> FormOut:
     form = load_form_or_raise(db, form_id)
     form.status = FormStatus.DRAFT
     db.commit()
+    record_version(db, form, kind="unpublish")
     return get_form(db, form_id)
 
 

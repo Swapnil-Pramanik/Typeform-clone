@@ -174,3 +174,18 @@ class PublicFormOut(BaseModel):
     #: instead of the questions, and the server refuses the submission anyway.
     accepting_responses: bool = True
     questions: list[QuestionOut]
+
+
+class FormVersionOut(ORMModel):
+    """One entry in the history panel. The snapshot itself is never sent.
+
+    A version is only ever restored whole, by ID, so shipping the blob would be
+    payload for a client that has nothing to do with it.
+    """
+
+    id: int
+    created_at: datetime
+    kind: str
+    summary: str
+    #: True for the entry matching the form as it stands right now.
+    is_current: bool = False

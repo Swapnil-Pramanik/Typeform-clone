@@ -53,7 +53,7 @@ export function TextField({
     "aria-invalid": invalid,
     onChange: (event: { target: { value: string } }) => onChange(event.target.value),
     className: cn(
-      "tf-caret w-full bg-transparent text-[26px] sm:text-[28px] font-normal",
+      "tf-caret w-full bg-transparent text-[26px] @min-[640px]:text-[28px] font-normal",
       "placeholder:text-ink-faint/70 focus:outline-none focus-visible:outline-none disabled:cursor-default",
       "border-b pb-2 transition-colors",
       invalid ? "border-danger" : "border-line-strong focus:border-ink",
