@@ -1168,7 +1168,9 @@ copy that silently went stale.
 
 Search matches `display_value`, the denormalised rendered string already on each
 answer row — one `ILIKE` over one column finds "Cricket" whether it was typed,
-picked from a list or rated. Bulk delete is a POST with a body rather than a
+picked from a list or rated. The box keeps two values: what it shows, and what
+the server is asked for on a 300ms debounce. Querying per keystroke sent
+fourteen requests for a seven-letter word, and they could land out of order. Bulk delete is a POST with a body rather than a
 DELETE per row, because the IDs come from a checkbox column: one round trip per
 row would let a bulk delete half-fail in a way the table could not show. It is
 scoped to the form, so a stale page cannot reach another form's data by guessing.

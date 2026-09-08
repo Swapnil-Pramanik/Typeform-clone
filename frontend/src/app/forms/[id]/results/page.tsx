@@ -25,6 +25,7 @@ import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import { cn } from "@/lib/format";
+import { useDebouncedCallback } from "@/lib/hooks";
 import { useFormQuery, useResponses, useSummary } from "@/lib/queries";
 import type { FormResponse, ResponseSort } from "@/types";
 
@@ -41,20 +42,28 @@ export default function ResultsPage({
 
   const [tab, setTab] = useState<Tab>("responses");
   const [page, setPage] = useState(1);
+  // Two values on purpose: `search` is what the box shows, `query` is what the
+  // server is asked for. Without the debounce every keystroke was its own
+  // request — seven letters fired fourteen, and they could land out of order.
   const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const runSearch = useDebouncedCallback<string>((value) => {
+    setQuery(value);
+    setPage(1);
+  }, 300);
   const [sort, setSort] = useState<ResponseSort>("newest");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [open, setOpen] = useState<FormResponse | null>(null);
 
   const form = useFormQuery(formId);
-  const responses = useResponses(formId, page, search, sort);
+  const responses = useResponses(formId, page, query, sort);
   const summary = useSummary(formId);
 
   const total = responses.data?.total ?? 0;
   const pageSize = responses.data?.page_size ?? 25;
   const pageCount = Math.max(Math.ceil(total / pageSize), 1);
-  const searching = search.trim().length > 0;
+  const searching = query.trim().length > 0;
 
   const TABS: { id: Tab; label: string; gem?: boolean }[] = [
     { id: "insights", label: "Smart Insights", gem: true },
@@ -142,7 +151,7 @@ export default function ResultsPage({
                 search={search}
                 onSearch={(value) => {
                   setSearch(value);
-                  setPage(1);
+                  runSearch(value);
                 }}
                 csvUrl={api.csvUrl(formId)}
                 canExport={total > 0}
