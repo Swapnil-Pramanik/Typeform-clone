@@ -136,3 +136,54 @@ def test_a_number_question_reports_only_the_values_answered(client):
 
     stats = client.get(f"/api/forms/{form['id']}/summary").json()["questions"][0]
     assert [(b["value"], b["count"]) for b in stats["distribution"]] == [(2.0, 1), (40.0, 2)]
+
+
+def test_the_partial_route_takes_a_beacons_content_type(client):
+    """`sendBeacon` cannot preflight, so its body arrives as `text/plain`.
+
+    Posting that to the main submit route is a 422 — which is why the beacon
+    silently recorded nothing at all until this route existed.
+    """
+    form = client.post("/api/forms", json={"title": "Beacon"}).json()
+    question = client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "short_text", "title": "Name?"},
+    ).json()
+    slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+
+    body = {"answers": [{"question_id": question["id"], "value": "Ada"}]}
+    headers = {"content-type": "text/plain;charset=UTF-8"}
+
+    refused = client.post(f"/api/f/{slug}/responses", json=body, headers=headers)
+    assert refused.status_code == 422
+
+    accepted = client.post(
+        f"/api/f/{slug}/responses/partial", json=body, headers=headers
+    )
+    assert accepted.status_code == 200, accepted.text
+
+    rows = client.get(f"/api/forms/{form['id']}/responses").json()["items"]
+    assert len(rows) == 1
+    assert rows[0]["is_complete"] is False
+
+
+def test_the_partial_route_cannot_record_a_completed_response(client):
+    """It is reachable without a preflight, so it must not be able to lie."""
+    form = client.post("/api/forms", json={"title": "Beacon"}).json()
+    question = client.post(
+        f"/api/forms/{form['id']}/questions",
+        json={"type": "short_text", "title": "Name?"},
+    ).json()
+    slug = client.post(f"/api/forms/{form['id']}/publish").json()["slug"]
+
+    client.post(
+        f"/api/f/{slug}/responses/partial",
+        json={
+            "answers": [{"question_id": question["id"], "value": "Ada"}],
+            "is_complete": True,
+        },
+    )
+
+    summary = client.get(f"/api/forms/{form['id']}/summary").json()
+    assert summary["completed_responses"] == 0
+    assert summary["total_responses"] == 1

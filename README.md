@@ -676,6 +676,7 @@ Interactive docs at `/docs` when the backend is running.
 |---|---|---|
 | `GET` | `/api/f/{slug}` | Published forms only, else `404`. No numeric ID in the payload. Carries `settings` and `accepting_responses`. |
 | `POST` | `/api/f/{slug}/responses` | Validate, snapshot, store, return the ending payload. `409` if the creator has closed the form. |
+| `POST` | `/api/f/{slug}/responses/partial` | The drop-out beacon. Reads any content type; can only ever record an incomplete response. |
 
 `GET /api/health` returns `{"status": "ok"}`.
 
@@ -995,6 +996,8 @@ invariant the design rests on rather than one function:
 | `test_each_row_carries_the_ending_it_reached` | The Ending column has something to show. |
 | `test_a_rating_distribution_keeps_its_empty_buckets` | "Nobody gave us a 1" is information a histogram must not hide. |
 | `test_a_number_question_reports_only_the_values_answered` | No scale to fill in, so it lists what actually came back. |
+| `test_the_partial_route_takes_a_beacons_content_type` | `sendBeacon` cannot preflight, so its `text/plain` body has to be accepted somewhere. |
+| `test_the_partial_route_cannot_record_a_completed_response` | A route reachable without a preflight must not be able to lie about completion. |
 | `test_always_skips_the_next_question_whatever_the_answer` | "Always go to" takes the block off the path, so its required flag cannot block. |
 | `test_conditional_rules_outrank_the_always_rule_below_them` | List order really is precedence: the catch-all only fires once the others decline. |
 | `test_always_replaces_the_fall_through_rather_than_racing_it` | The cycle checker stops believing in an edge the always rule removed. |
@@ -1232,6 +1235,34 @@ The block stays selected now and the panel simply swaps, so a colour lands on
 the block you were looking at. The duplicate entry point in the left rail is
 gone with it: a *Design → Colours & font* row that did the same thing as the
 toolbar button beside it.
+
+**20. Submitting is the one request that must not be lost, and it was.**
+
+Three faults met on a phone. The drop-out beacon and the real submit shared a
+single `submitted` flag, so once a phone had been backgrounded for a moment —
+a notification, the screen lock, an app switch — pressing Submit returned early
+and did nothing at all, for the rest of the session. Desktops rarely background
+a tab mid-form, which is exactly why it never showed up there.
+
+The beacon also never worked. `navigator.sendBeacon` is the only request a
+browser reliably finishes while unloading a page, and it cannot trigger a CORS
+preflight, so its content type must be one of three safelisted values — none of
+them `application/json`. Sent as `text/plain` the main route answered `422`, so
+every partial response was silently dropped, cross-origin, always. It now posts
+to `/responses/partial`, a route that reads the body whatever the beacon
+labelled it and can only ever store `is_complete=False`; loosening the main
+route instead would have weakened the one endpoint real answers arrive on.
+
+And the beacon listened for `visibilitychange`. Hiding is not leaving: a phone
+fires it constantly, so every notification would have invented an abandonment
+and then double-counted the respondent when they came back and finished.
+`pagehide` is the event that means the page is actually going away.
+
+Around that, the submit itself gained a 20-second timeout and one retry — but
+only on a status-0 failure, where the request never reached the server and there
+is nothing to duplicate. A 4xx or 5xx is reported as-is. The offline message a
+respondent sees is now about their connection rather than about whether a
+backend is running, which is not a question they can act on.
 
 
 

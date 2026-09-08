@@ -6,6 +6,7 @@ and it requires no authentication by design.
 """
 
 from fastapi import APIRouter, Request
+from pydantic import ValidationError
 
 from app.routers.deps import (
     DbSession,
@@ -41,8 +42,7 @@ def get_public_form(slug: str, db: DbSession):
     )
 
 
-@router.post("/{slug}/responses", response_model=SubmissionOut)
-def submit(slug: str, payload: SubmissionIn, request: Request, db: DbSession):
+def _store(slug: str, payload: SubmissionIn, request: Request, db: DbSession):
     try:
         form = form_service.get_published_form(db, slug)
     except FormError as error:
@@ -60,3 +60,42 @@ def submit(slug: str, payload: SubmissionIn, request: Request, db: DbSession):
         raise conflict(error) from error
     except AnswerValidationError as error:
         raise validation_error(error) from error
+
+
+@router.post("/{slug}/responses", response_model=SubmissionOut)
+def submit(slug: str, payload: SubmissionIn, request: Request, db: DbSession):
+    return _store(slug, payload, request, db)
+
+
+@router.post("/{slug}/responses/partial", response_model=SubmissionOut)
+async def submit_partial(slug: str, request: Request, db: DbSession):
+    """Record an abandoned attempt, from a page that is going away.
+
+    A separate endpoint because of one CORS rule. `navigator.sendBeacon` is the
+    only request a browser reliably completes while unloading a page, and it
+    cannot trigger a preflight — so its content type has to be one of the three
+    CORS-safelisted values, none of which is `application/json`. Posting the
+    same JSON as `text/plain` to the main endpoint fails validation, and
+    loosening *that* endpoint to accept any content type would weaken the one
+    route respondents' real answers arrive on.
+
+    So: this route reads the body itself, whatever the beacon labelled it, and
+    forces `is_complete=False`. It can never be used to record a completed
+    response.
+    """
+    try:
+        raw = await request.json()
+    except ValueError as error:
+        raise validation_error(
+            AnswerValidationError(0, "That is not a valid submission.")
+        ) from error
+
+    try:
+        payload = SubmissionIn.model_validate(raw)
+    except ValidationError as error:
+        raise validation_error(
+            AnswerValidationError(0, "That is not a valid submission.")
+        ) from error
+
+    payload.is_complete = False
+    return _store(slug, payload, request, db)

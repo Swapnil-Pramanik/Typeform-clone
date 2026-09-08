@@ -29,7 +29,7 @@ import {
 import { useFormFlow } from "@/components/flow/useFormFlow";
 import { QuestionRenderer } from "@/components/render/QuestionRenderer";
 import { resolveEnding } from "@/lib/logic";
-import { ApiError, API_BASE, api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import { cn } from "@/lib/format";
 import { formSurface } from "@/lib/formTheme";
 import { useHotkeys, usePrefersReducedMotion } from "@/lib/hooks";
@@ -60,7 +60,15 @@ export function FormFlow({
 
   const [pending, setPending] = useState(false);
   const [ending, setEnding] = useState<EndingPayload | null>(null);
-  const submitted = useRef(false);
+  /**
+   * Two flags, not one. They used to be a single `submitted`, which the
+   * drop-out beacon also set — so once a phone had been backgrounded for a
+   * moment, pressing Submit returned early and did nothing at all, for the
+   * rest of the session. A partial being recorded says nothing about whether
+   * the respondent has finished.
+   */
+  const completed = useRef(false);
+  const partialSent = useRef(false);
 
   // Read through the flow's getter, never the render closure: this runs from an
   // auto-advance timer and from the visibility handler, both of which can fire
@@ -78,11 +86,11 @@ export function FormFlow({
   );
 
   const submit = useCallback(async () => {
-    if (submitted.current) return;
+    if (completed.current) return;
 
     if (preview) {
       const reached = resolveEnding(form.questions, getAnswers());
-      submitted.current = true;
+      completed.current = true;
       setEnding(
         reached && {
           id: reached.id,
@@ -101,7 +109,7 @@ export function FormFlow({
         answers: payload(),
         is_complete: true,
       });
-      submitted.current = true;
+      completed.current = true;
       setEnding(result.ending);
       flow.finish();
     } catch (error) {
@@ -113,6 +121,13 @@ export function FormFlow({
         );
         if (index >= 0) flow.jumpTo(index);
         flow.setError(error.message);
+      } else if (error instanceof ApiError && error.isOffline) {
+        // The respondent is not the person who can restart a server, so they
+        // get the sentence that helps them; the developer message stays in the
+        // error object for the console.
+        flow.setError(
+          "We couldn't reach the server. Check your connection and try again.",
+        );
       } else {
         flow.setError("Something went wrong. Please try again.");
       }
@@ -155,24 +170,24 @@ export function FormFlow({
    * Drop-out beacon. A respondent who answered something and then left is
    * recorded as a partial response, which is what makes the dashboard's
    * completion rate mean anything.
+   *
+   * On `pagehide`, not `visibilitychange`. Hiding is not leaving: a phone fires
+   * it every time a notification arrives or the screen locks, and recording a
+   * partial then both invents an abandonment that did not happen and
+   * double-counts the respondent when they come back and finish.
    */
   useEffect(() => {
-    const onHide = () => {
+    const onLeave = () => {
       if (preview) return; // a rehearsal must not record a partial response
-      if (submitted.current || document.visibilityState !== "hidden") return;
+      if (completed.current || partialSent.current) return;
       const answers = payload();
       if (answers.length === 0) return;
-      submitted.current = true;
-      navigator.sendBeacon(
-        `${API_BASE}/api/f/${form.slug}/responses`,
-        new Blob([JSON.stringify({ answers, is_complete: false })], {
-          type: "application/json",
-        }),
-      );
+      partialSent.current = true;
+      api.sendPartial(form.slug, answers);
     };
 
-    document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onLeave);
+    return () => window.removeEventListener("pagehide", onLeave);
   }, [form.slug, payload, preview]);
 
   const transition = reduced ? reducedTransition : stepTransition;
@@ -286,7 +301,8 @@ export function FormFlow({
                   <EndingScreen
                     ending={ending}
                     onRestart={() => {
-                      submitted.current = false;
+                      completed.current = false;
+                      partialSent.current = false;
                       setEnding(null);
                       flow.restart();
                     }}

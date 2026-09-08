@@ -69,6 +69,13 @@ async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(`Request failed (${response.status}).`, response.status);
 }
 
+/**
+ * A request that hangs forever is worse than one that fails: the caller can
+ * retry a failure. Twenty seconds is long enough for a cold serverless function
+ * on a slow phone and short enough that nobody assumes the app is broken.
+ */
+const TIMEOUT_MS = 20_000;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
@@ -76,6 +83,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: { "Content-Type": "application/json", ...init?.headers },
       cache: "no-store",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch {
     // fetch only rejects when the request never reached the server — a stopped
@@ -208,15 +216,55 @@ export const api = {
 
   getPublicForm: (slug: string) => request<PublicForm>(`/api/f/${slug}`),
 
-  submitResponse: (
+  /**
+   * Submit a response, retrying once if the request never left the device.
+   *
+   * A respondent has typed the whole form by this point; losing it to one
+   * flaky moment on a phone is the worst failure this app has. Only a
+   * status-0 failure is retried — the request did not reach the server, so
+   * there is nothing to duplicate. A refusal (4xx) or a server error (5xx) is
+   * reported as-is, because retrying either would be wrong.
+   */
+  submitResponse: async (
     slug: string,
     payload: {
       answers: { question_id: number; value: unknown }[];
       is_complete?: boolean;
     },
-  ) =>
-    request<SubmissionResult>(`/api/f/${slug}/responses`, {
-      method: "POST",
-      body: body(payload),
-    }),
+  ) => {
+    const send = () =>
+      request<SubmissionResult>(`/api/f/${slug}/responses`, {
+        method: "POST",
+        body: body(payload),
+      });
+
+    try {
+      return await send();
+    } catch (error) {
+      if (error instanceof ApiError && error.isOffline) return await send();
+      throw error;
+    }
+  },
+
+  /**
+   * Record an abandoned attempt from a page that is going away.
+   *
+   * `sendBeacon` is the only request a browser reliably finishes while
+   * unloading, and it cannot trigger a CORS preflight — so the body has to go
+   * out as `text/plain`, which is why the server has a separate route that
+   * reads it regardless of what the beacon called it. Returns whether the
+   * browser accepted the beacon for delivery, not whether it arrived.
+   */
+  sendPartial: (
+    slug: string,
+    answers: { question_id: number; value: unknown }[],
+  ): boolean => {
+    if (typeof navigator === "undefined" || !navigator.sendBeacon) return false;
+    return navigator.sendBeacon(
+      `${API_BASE}/api/f/${slug}/responses/partial`,
+      new Blob([body({ answers, is_complete: false })], {
+        type: "text/plain;charset=UTF-8",
+      }),
+    );
+  },
 };
