@@ -49,6 +49,15 @@ class ResponseOut(BaseModel):
     is_complete: bool
     meta: dict[str, Any] | None = None
     answers: list[AnswerOut] = []
+    #: The ending this submission reached, resolved from the form's current
+    #: rules rather than stored — see `_to_out` in `services/responses.py`.
+    ending_title: str | None = None
+
+
+class ResponseDeleteIn(BaseModel):
+    """The rows a checkbox column has selected."""
+
+    response_ids: list[int] = Field(min_length=1, max_length=200)
 
 
 class ResponsePage(BaseModel):

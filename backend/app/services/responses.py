@@ -20,6 +20,7 @@ from app.schemas import (
     ChoiceCount,
     FormSummaryStats,
     QuestionStats,
+    ResponseOut,
     ResponsePage,
     SubmissionIn,
     SubmissionOut,
@@ -148,28 +149,104 @@ def _ending_payload(ending: Question) -> dict:
     }
 
 
+def _raw_value(answer: Answer) -> object:
+    """The answer as the logic rules expect it, back out of its typed columns."""
+    if answer.option_ids is not None:
+        return answer.option_ids
+    if answer.bool_value is not None:
+        return answer.bool_value
+    if answer.number_value is not None:
+        return answer.number_value
+    return answer.text_value
+
+
+def _to_out(form: Form, response: Response) -> ResponseOut:
+    """One submission, plus the ending it reached.
+
+    The ending is derived rather than stored. Storing it would be a second copy
+    of something the rules already determine, and it would go stale the moment
+    an author edited them — which is the trap `question_title` snapshots exist
+    to avoid for answers, and the opposite call is right here: an ending is a
+    property of the current rule set, not of the moment the answer was given.
+    """
+    raw = {answer.question_id: _raw_value(answer) for answer in response.answers}
+    ending = resolve_ending(form, raw)
+    return ResponseOut.model_validate(response).model_copy(
+        update={"ending_title": ending.title if ending else None}
+    )
+
+
 def list_responses(
-    db: Session, form_id: int, page: int = 1, page_size: int = 25
+    db: Session,
+    form_id: int,
+    page: int = 1,
+    page_size: int = 25,
+    search: str | None = None,
+    sort: str = "newest",
 ) -> ResponsePage:
-    """A page of a form's submissions, newest first."""
-    load_form_or_raise(db, form_id)
+    """A page of a form's submissions.
+
+    ``search`` matches the rendered text of any answer, which is why
+    ``display_value`` is denormalised onto the row: one ILIKE over one column
+    finds "Cricket" whether it was typed, picked from a list or rated.
+    """
+    form = load_form_or_raise(db, form_id)
     page = max(page, 1)
     page_size = min(max(page_size, 1), 100)
 
-    total = db.scalar(
-        select(func.count(Response.id)).where(Response.form_id == form_id)
-    ) or 0
+    where = [Response.form_id == form_id]
+    term = (search or "").strip()
+    if term:
+        where.append(
+            select(Answer.id)
+            .where(
+                Answer.response_id == Response.id,
+                Answer.display_value.ilike(f"%{term}%"),
+            )
+            .exists()
+        )
 
+    total = db.scalar(select(func.count(Response.id)).where(*where)) or 0
+
+    order = (
+        Response.started_at.asc() if sort == "oldest" else Response.started_at.desc()
+    )
     items = db.scalars(
         select(Response)
-        .where(Response.form_id == form_id)
+        .where(*where)
         .options(selectinload(Response.answers))
-        .order_by(Response.started_at.desc(), Response.id.desc())
+        .order_by(order, Response.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).all()
 
-    return ResponsePage(items=list(items), total=total, page=page, page_size=page_size)
+    return ResponsePage(
+        items=[_to_out(form, response) for response in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+def delete_responses(db: Session, form_id: int, response_ids: list[int]) -> int:
+    """Delete submissions from one form. Returns how many actually went.
+
+    Scoped to the form on purpose: the IDs arrive from a checkbox column, and a
+    stale page must not be able to delete another form's data by guessing.
+    """
+    if not response_ids:
+        return 0
+    load_form_or_raise(db, form_id)
+
+    doomed = db.scalars(
+        select(Response).where(
+            Response.form_id == form_id, Response.id.in_(response_ids)
+        )
+    ).all()
+    for response in doomed:
+        db.delete(response)
+    db.commit()
+    return len(doomed)
 
 
 def get_response(db: Session, response_id: int) -> Response:

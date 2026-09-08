@@ -61,7 +61,8 @@ conversational flow.
 | | The form's own theme applied to the live experience | Built |
 | | Form settings honoured: chrome hidden per switch; closed forms show a notice | Built |
 | | `prefers-reduced-motion` honoured | Built |
-| **Results** | Paginated responses table, single-response view | Built |
+| **Results** | Responses table: search, sort, bulk delete, single-response view | Built |
+| | Derived columns — response type, and the ending each submission reached | Built |
 | | Per-question aggregates computed by the database | Built |
 | | Completion rate from partial responses | Built |
 | | CSV export (streaming) | Built |
@@ -314,7 +315,8 @@ drift from what a respondent sees.
         │   │   ├── Sidebar.tsx  FormTable.tsx  RowMenu.tsx
         │   │   ├── FormThumbnail.tsx  EmptyWorkspace.tsx  ComingSoonButton.tsx
         │   ├── results/
-        │   │   ├── ResponsesTable.tsx  ResponseDetail.tsx  SummaryPanel.tsx
+        │   │   ├── ResponsesTable.tsx
+        │   │   ├── ResultsToolbar.tsx  ResponseDetail.tsx  SummaryPanel.tsx
         │   └── ui/
         │       ├── Button.tsx  Modal.tsx  Toast.tsx  Spinner.tsx
         │       ├── Dropdown.tsx  InlineText.tsx  EmptyState.tsx  ComingSoon.tsx
@@ -658,7 +660,8 @@ Interactive docs at `/docs` when the backend is running.
 | `PUT` | `/api/questions/{id}/rules` | Replace the branching rules. `400` if the set would loop. |
 | `DELETE` | `/api/questions/{id}` | Soft delete. |
 | `PUT` | `/api/forms/{id}/questions/order` | Full ordered ID array → rewrite every position. |
-| `GET` | `/api/forms/{id}/responses` | Paginated submissions (`page`, `page_size`). |
+| `GET` | `/api/forms/{id}/responses` | Paginated submissions (`page`, `page_size`, `search`, `sort`). Each row carries the ending it reached. |
+| `POST` | `/api/forms/{id}/responses/delete` | Delete the selected submissions. Scoped to the form. |
 | `GET` | `/api/responses/{id}` | One submission in full. |
 | `GET` | `/api/forms/{id}/summary` | Per-question aggregates + completion rate. |
 | `GET` | `/api/forms/{id}/responses.csv` | Streaming CSV export. |
@@ -984,6 +987,10 @@ invariant the design rests on rather than one function:
 | `test_a_version_from_another_form_is_refused` | A version ID from a different form is a 404, not a cross-form restore. |
 | `test_no_version_is_ever_dated_in_the_past` | A version is stamped when it happened, never back-dated. |
 | `test_the_seed_writes_no_history_at_all` | Seeding invents no versions for forms nobody has edited. |
+| `test_search_matches_the_rendered_answer` | One ILIKE over `display_value` finds a value whatever its type. |
+| `test_bulk_delete_removes_only_what_was_selected` | The checkbox column deletes what was ticked and nothing else. |
+| `test_delete_cannot_reach_another_form` | A stale page cannot delete another form's data by guessing IDs. |
+| `test_each_row_carries_the_ending_it_reached` | The Ending column has something to show. |
 | `test_always_skips_the_next_question_whatever_the_answer` | "Always go to" takes the block off the path, so its required flag cannot block. |
 | `test_conditional_rules_outrank_the_always_rule_below_them` | List order really is precedence: the catch-all only fires once the others decline. |
 | `test_always_replaces_the_fall_through_rather_than_racing_it` | The cycle checker stops believing in an edge the always rule removed. |
@@ -1046,6 +1053,8 @@ product puts the feature:
 | Add-element modal tabs | *Import questions*, *Create with AI* |
 | Share → *Embed & distribute* | Standard/popup/slider/side-tab embeds, email, QR |
 | Dashboard nav | *Contacts*, *Automations*, *Insights*, *Research Flow* |
+| Results → *Smart Insights*, *Form performance* | AI summaries of open text; views, starts and drop-off per question |
+| Results toolbar | *Spam*, date range, *Filters*, row height, column settings, *Generate test response*, and the Tags column |
 | Dashboard account bar | *Integrations*, *Brand kit*, *View plans*, help, the account switcher |
 | Dashboard sidebar | *Ask Typeform AI* |
 | Workspace header | *Invite*, the workspace `⋯` menu |
@@ -1145,6 +1154,25 @@ is the only shape that is proportionally honest — the question column measures
 Clicks, focus and typing pass through a CSS transform unchanged, so editing in
 place still works at any scale — which was the one real risk in this approach and
 the reason it was worth checking in both frames before committing to it.
+
+**16. Two of the results table's columns are derived, not stored.** Response
+type reads `is_complete`; the Ending column resolves the form's *current* rules
+against the answers on the row.
+
+That is the opposite call from `question_title`, and deliberately so. An answer's
+title is snapshotted because it records what was asked at the time — changing the
+question later must not rewrite history. An ending is not a historical fact about
+the submission; it is where the rules send that set of answers, and an author who
+rewires their branching wants the column to follow. Storing it would be a second
+copy that silently went stale.
+
+Search matches `display_value`, the denormalised rendered string already on each
+answer row — one `ILIKE` over one column finds "Cricket" whether it was typed,
+picked from a list or rated. Bulk delete is a POST with a body rather than a
+DELETE per row, because the IDs come from a checkbox column: one round trip per
+row would let a bulk delete half-fail in a way the table could not show. It is
+scoped to the form, so a stale page cannot reach another form's data by guessing.
+
 
 That sharing is also what fixed the placement bug underneath it. Questions sit
 in a column starting about a quarter of the way across a wide screen; welcome,

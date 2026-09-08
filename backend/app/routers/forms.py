@@ -1,5 +1,7 @@
 """Authoring surface — ``/api/forms/*``. Full access to drafts and responses."""
 
+from typing import Literal
+
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import StreamingResponse
 
@@ -15,6 +17,7 @@ from app.schemas import (
     QuestionCreate,
     QuestionOrderIn,
     QuestionOut,
+    ResponseDeleteIn,
     ResponsePage,
 )
 from app.services import forms as form_service
@@ -106,11 +109,30 @@ def list_responses(
     db: DbSession,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
+    search: str | None = Query(default=None),
+    sort: Literal["newest", "oldest"] = Query(default="newest"),
 ):
     try:
-        return response_service.list_responses(db, form_id, page, page_size)
+        return response_service.list_responses(
+            db, form_id, page, page_size, search=search, sort=sort
+        )
     except FormError as error:
         raise not_found(error) from error
+
+
+@router.post("/{form_id}/responses/delete", status_code=status.HTTP_200_OK)
+def delete_responses(form_id: int, payload: ResponseDeleteIn, db: DbSession):
+    """Delete the selected submissions.
+
+    A POST rather than a DELETE because the IDs are a body, not a path: a
+    checkbox column selects many rows, and one round trip per row would make a
+    bulk delete partially fail in ways the table could not show.
+    """
+    try:
+        deleted = response_service.delete_responses(db, form_id, payload.response_ids)
+    except FormError as error:
+        raise not_found(error) from error
+    return {"deleted": deleted}
 
 
 @router.get("/{form_id}/summary", response_model=FormSummaryStats)

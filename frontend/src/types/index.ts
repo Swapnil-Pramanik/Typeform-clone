@@ -155,6 +155,9 @@ export interface FormVersion {
   is_current: boolean;
 }
 
+/** The responses table's two orderings. */
+export type ResponseSort = "newest" | "oldest";
+
 /** Which frame the builder draws the form in — the canvas and the preview share it. */
 export type ViewDevice = "desktop" | "mobile";
 
@@ -180,6 +183,8 @@ export interface FormResponse {
   is_complete: boolean;
   meta: Record<string, unknown> | null;
   answers: AnswerOut[];
+  /** The ending this submission reached, derived from the form's rules. */
+  ending_title: string | null;
 }
 
 export interface ResponsePage {

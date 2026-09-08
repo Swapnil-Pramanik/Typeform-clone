@@ -15,12 +15,19 @@ import {
 } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
-import type { Form, FormSummary, FormSummaryStats, ResponsePage } from "@/types";
+import type {
+  Form,
+  FormSummary,
+  FormSummaryStats,
+  ResponsePage,
+  ResponseSort,
+} from "@/types";
 
 export const keys = {
   forms: (search?: string) => ["forms", search ?? ""] as const,
   form: (id: number) => ["form", id] as const,
-  responses: (id: number, page: number) => ["responses", id, page] as const,
+  responses: (id: number, page: number, search: string, sort: ResponseSort) =>
+    ["responses", id, page, search, sort] as const,
   summary: (id: number) => ["summary", id] as const,
 };
 
@@ -38,10 +45,15 @@ export function useFormQuery(id: number): UseQueryResult<Form> {
 export function useResponses(
   id: number,
   page: number,
+  search = "",
+  sort: ResponseSort = "newest",
 ): UseQueryResult<ResponsePage> {
   return useQuery({
-    queryKey: keys.responses(id, page),
-    queryFn: () => api.listResponses(id, page),
+    queryKey: keys.responses(id, page, search, sort),
+    queryFn: () => api.listResponses(id, page, { search, sort }),
+    // Keeps the table on screen while a search request is in flight, instead of
+    // dropping to the loading pane on every keystroke.
+    placeholderData: (previous) => previous,
   });
 }
 

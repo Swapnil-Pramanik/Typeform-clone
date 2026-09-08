@@ -304,6 +304,39 @@ export const Calculator = (p: IconProps) => (
     <path d="M8.5 7.5h7M8.7 12h.01M12 12h.01M15.3 12h.01M8.7 16.4h.01M12 16.4h.01M15.3 16.4h.01" />
   </Icon>
 );
+/* --- results table ------------------------------------------------------- */
+
+export const Clock = (p: IconProps) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7.5V12l3 1.8" /></Icon>
+);
+export const Funnel = (p: IconProps) => (
+  <Icon {...p}><path d="M4 5h16l-6.2 7.4V19l-3.6-2v-4.6L4 5Z" /></Icon>
+);
+export const Sliders = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 8h10M18 8h2M4 16h4M12 16h8" />
+    <circle cx="16" cy="8" r="2" /><circle cx="10" cy="16" r="2" />
+  </Icon>
+);
+export const RowHeight = (p: IconProps) => (
+  <Icon {...p}><path d="M4 6h16M4 18h16M12 9v6m0-6-2 2m2-2 2 2m-2 4-2-2m2 2 2-2" /></Icon>
+);
+export const Tag = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M11 3H4a1 1 0 0 0-1 1v7l9.5 9.5a1.5 1.5 0 0 0 2.1 0l6.9-6.9a1.5 1.5 0 0 0 0-2.1L11 3Z" />
+    <path d="M7.5 7.5h.01" />
+  </Icon>
+);
+export const Inbox = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3 13h4.5l1.5 3h6l1.5-3H21" />
+    <path d="M5 5h14l2 8v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4l2-8Z" />
+  </Icon>
+);
+export const Warning = (p: IconProps) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7.8v4.6M12 16.2h.01" /></Icon>
+);
+
 export const Layers = (p: IconProps) => (
   <Icon {...p}><path d="m12 3 8 4.5-8 4.5-8-4.5Z" /><path d="m4 12.5 8 4.5 8-4.5" /></Icon>
 );

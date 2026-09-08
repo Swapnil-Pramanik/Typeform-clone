@@ -11,6 +11,7 @@ import type {
   FormSummary,
   FormSummaryStats,
   FormVersion,
+  ResponseSort,
   FormTheme,
   PublicForm,
   Question,
@@ -169,10 +170,26 @@ export const api = {
       body: body({ question_ids: questionIds }),
     }),
 
-  listResponses: (formId: number, page = 1, pageSize = 25) =>
-    request<ResponsePage>(
-      `/api/forms/${formId}/responses?page=${page}&page_size=${pageSize}`,
-    ),
+  listResponses: (
+    formId: number,
+    page = 1,
+    { search = "", sort = "newest" as ResponseSort, pageSize = 25 } = {},
+  ) => {
+    const query = new URLSearchParams({
+      page: String(page),
+      page_size: String(pageSize),
+      sort,
+    });
+    if (search.trim()) query.set("search", search.trim());
+    return request<ResponsePage>(`/api/forms/${formId}/responses?${query}`);
+  },
+
+  /** One request for the whole selection — see the router's note on the verb. */
+  deleteResponses: (formId: number, responseIds: number[]) =>
+    request<{ deleted: number }>(`/api/forms/${formId}/responses/delete`, {
+      method: "POST",
+      body: body({ response_ids: responseIds }),
+    }),
 
   getSummary: (formId: number) =>
     request<FormSummaryStats>(`/api/forms/${formId}/summary`),
