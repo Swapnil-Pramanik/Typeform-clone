@@ -14,6 +14,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ClosedScreen } from "@/components/flow/ClosedScreen";
 import { EndingScreen } from "@/components/flow/EndingScreen";
 import { NavChevrons } from "@/components/flow/NavChevrons";
+import {
+  FormStage,
+  STAGE_CENTRED,
+  STAGE_OFFSET,
+} from "@/components/flow/FormStage";
 import { ProgressBar } from "@/components/flow/ProgressBar";
 import { WelcomeScreen } from "@/components/flow/WelcomeScreen";
 import {
@@ -197,56 +202,54 @@ export function FormFlow({
       style={formSurface(form.theme)}
     >
       {form.accepting_responses === false ? (
-        <div className={cn("flex items-center", preview ? "min-h-full" : "min-h-dvh")}>
-          <div className="w-full px-6 py-24 @min-[640px]:px-10 @min-[1024px]:pl-[26cqw] @min-[1024px]:pr-16">
-            <div className="flex justify-center @min-[1024px]:justify-start">
-              <ClosedScreen title={form.title} />
-            </div>
+        <FormStage fill={preview}>
+          <div className={STAGE_CENTRED}>
+            <ClosedScreen title={form.title} />
           </div>
-        </div>
+        </FormStage>
       ) : (
         <>
           {flow.phase === "question" && settings.show_progress_bar && (
             <ProgressBar value={flow.progress} contained={preview} />
           )}
 
-          <div className={cn("flex items-center", preview ? "min-h-full" : "min-h-dvh")}>
-            <div className="w-full px-6 py-24 @min-[640px]:px-10 @min-[1024px]:pl-[26cqw] @min-[1024px]:pr-16">
-              <AnimatePresence
-                mode="wait"
-                custom={flow.direction}
-                initial={false}
-              >
-                {flow.phase === "welcome" && form.welcome_screen && (
-                  <motion.div
-                    key="welcome"
-                    custom={flow.direction}
-                    variants={variants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={transition}
-                    className="flex justify-center @min-[1024px]:justify-start"
-                  >
-                    <WelcomeScreen
-                      data={form.welcome_screen}
-                      formTitle={form.title}
-                      onStart={flow.start}
-                    />
-                  </motion.div>
-                )}
+          <FormStage fill={preview}>
+            <AnimatePresence
+              mode="wait"
+              custom={flow.direction}
+              initial={false}
+            >
+              {flow.phase === "welcome" && form.welcome_screen && (
+                <motion.div
+                  key="welcome"
+                  custom={flow.direction}
+                  variants={variants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={transition}
+                  className={STAGE_CENTRED}
+                >
+                  <WelcomeScreen
+                    data={form.welcome_screen}
+                    formTitle={form.title}
+                    onStart={flow.start}
+                  />
+                </motion.div>
+              )}
 
-                {flow.phase === "question" && flow.current && (
-                  <motion.div
-                    key={flow.current.id}
-                    custom={flow.direction}
-                    variants={variants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={transition}
-                    className="max-w-2xl"
-                  >
+              {flow.phase === "question" && flow.current && (
+                <motion.div
+                  key={flow.current.id}
+                  custom={flow.direction}
+                  variants={variants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={transition}
+                  className={STAGE_OFFSET}
+                >
+                  <div className="max-w-2xl">
                     <QuestionRenderer
                       question={flow.current}
                       index={
@@ -265,33 +268,33 @@ export function FormFlow({
                       showRequiredAsterisk={settings.show_required_asterisk}
                       showAnswerLetters={settings.show_answer_letters}
                     />
-                  </motion.div>
-                )}
+                  </div>
+                </motion.div>
+              )}
 
-                {flow.phase === "ending" && (
-                  <motion.div
-                    key="ending"
-                    custom={flow.direction}
-                    variants={variants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={transition}
-                    className="flex justify-center @min-[1024px]:justify-start"
-                  >
-                    <EndingScreen
-                      ending={ending}
-                      onRestart={() => {
-                        submitted.current = false;
-                        setEnding(null);
-                        flow.restart();
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
+              {flow.phase === "ending" && (
+                <motion.div
+                  key="ending"
+                  custom={flow.direction}
+                  variants={variants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={transition}
+                  className={STAGE_CENTRED}
+                >
+                  <EndingScreen
+                    ending={ending}
+                    onRestart={() => {
+                      submitted.current = false;
+                      setEnding(null);
+                      flow.restart();
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </FormStage>
 
           {flow.phase === "question" && (
             <NavChevrons

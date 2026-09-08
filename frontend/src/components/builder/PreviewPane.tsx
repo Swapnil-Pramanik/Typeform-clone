@@ -14,12 +14,17 @@ import type { ReactNode } from "react";
 
 import { EditableChoiceList } from "@/components/builder/EditableChoiceList";
 import { EndingScreen } from "@/components/flow/EndingScreen";
+import {
+  FormStage,
+  STAGE_CENTRED,
+  STAGE_OFFSET,
+} from "@/components/flow/FormStage";
 import { WelcomeScreen } from "@/components/flow/WelcomeScreen";
 import { QuestionRenderer } from "@/components/render/QuestionRenderer";
+import { PHONE } from "@/lib/device";
 import { cn } from "@/lib/format";
 import { formSurface } from "@/lib/formTheme";
 import { isChoiceType } from "@/lib/questionTypes";
-import { PHONE } from "@/lib/device";
 import type {
   FormTheme,
   Question,
@@ -50,17 +55,26 @@ function Canvas({
   children,
   theme,
   device = "desktop",
+  /** Questions sit in an offset column; screens are centred. See `FormStage`. */
+  placement = "offset",
 }: {
   children: ReactNode;
   theme?: FormTheme | null;
   device?: ViewDevice;
+  placement?: "offset" | "centred";
 }) {
   const mobile = device === "mobile";
 
   return (
-    <div className="tf-scrollbar flex flex-1 items-center justify-center overflow-y-auto bg-canvas p-8">
+    <div className="flex flex-1 items-center justify-center overflow-hidden bg-canvas p-6">
       <div
         /*
+          The card is the screen, not a card on it: full width on desktop, a
+          phone's width on mobile, filling the canvas either way. A compact box
+          in the middle of the pane was the wrong shape to preview in — it never
+          got wide enough to show the column offset a real desktop shows, so the
+          preview disagreed with the form it was previewing.
+
           `text-ink` matters as much as the variables. Redefining `--tf-ink` here
           only reaches elements that name the token; anything that simply
           inherits its colour would still take `body`'s already-resolved value —
@@ -69,25 +83,29 @@ function Canvas({
           on the right value too.
 
           `@container` makes the shared renderer's breakpoints measure this card
-          rather than the window behind it. The padding sits on the child, not
-          here: a container measures its *content* box, so padding here would
-          shrink what the card reports its width to be — and the card would
-          claim to be narrower than the phone it is drawing.
+          rather than the window behind it. No padding here: a container measures
+          its *content* box, so padding would shrink what the card reports its
+          width to be, and the card would claim to be narrower than it is.
         */
         className={cn(
-          "@container w-full bg-bg font-[family-name:var(--font-form)] text-ink",
-          mobile
-            ? // A phone frame, not a narrow card: the bezel is what makes the
-              // width read as a device rather than as a layout accident.
-              "tf-scrollbar shrink-0 overflow-y-auto rounded-[2rem] border-[10px] border-ink-strong shadow-2xl"
-            : "max-w-2xl rounded-xl border border-line shadow-sm",
+          "@container relative h-full overflow-hidden rounded-xl border border-line",
+          "bg-bg font-[family-name:var(--font-form)] text-ink shadow-sm",
+          mobile ? "max-w-full shrink-0" : "w-full",
         )}
         style={{
           ...formSurface(theme),
-          ...(mobile ? { width: PHONE.width, height: PHONE.height } : {}),
+          ...(mobile ? { width: PHONE.width } : {}),
         }}
       >
-        <div className={mobile ? "px-6 py-10" : "px-10 py-14"}>{children}</div>
+        <div className="tf-scrollbar absolute inset-0 overflow-y-auto">
+          <FormStage fill>
+            <div className={placement === "centred" ? STAGE_CENTRED : STAGE_OFFSET}>
+              <div className={placement === "centred" ? undefined : "max-w-2xl"}>
+                {children}
+              </div>
+            </div>
+          </FormStage>
+        </div>
       </div>
     </div>
   );
@@ -105,7 +123,7 @@ export function PreviewPane({
 }: PreviewPaneProps) {
   if (welcome && onWelcomePatch) {
     return (
-      <Canvas theme={theme} device={device}>
+      <Canvas theme={theme} device={device} placement="centred">
         <WelcomeScreen
           data={welcome}
           formTitle={formTitle}
@@ -128,7 +146,7 @@ export function PreviewPane({
 
   if (question.type === "ending") {
     return (
-      <Canvas theme={theme} device={device}>
+      <Canvas theme={theme} device={device} placement="centred">
         <EndingScreen
           ending={{
             id: question.id,

@@ -284,6 +284,7 @@ drift from what a respondent sees.
         │   │   ├── FormFlow.tsx              # the public experience
         │   │   ├── useFormFlow.ts            # the step machine
         │   │   ├── motion.ts                 # the step transition
+        │   │   ├── FormStage.tsx             # where a block sits — shared with the canvas
         │   │   ├── ProgressBar.tsx           # top edge
         │   │   ├── NavChevrons.tsx           # bottom-right + Powered by
         │   │   ├── WelcomeScreen.tsx
@@ -1126,3 +1127,20 @@ Restore button was a no-op, then real summaries stamped eight days into a past
 this project does not have — and both looked convincing in the panel, which is
 exactly what made them worth deleting. History now starts empty, says so, and
 fills the moment anyone edits a form. Two tests hold that line.
+
+**15. The canvas is the screen, not a card on it.** The builder's preview pane
+fills its area — full width on desktop, a phone's width on mobile — and lays the
+block out through the same `FormStage` the respondent flow uses. A compact card
+in the middle of the pane was the wrong shape to preview in: it never got wide
+enough to cross the 1024px threshold, so it never showed the offset column a
+real desktop shows, and the preview quietly disagreed with the form it was
+previewing.
+
+That sharing is also what fixed the placement bug underneath it. Questions sit
+in a column starting about a quarter of the way across a wide screen; welcome,
+ending and closed screens are centred at every width. The offset used to live on
+the wrapper shared by all four, so the three centred screens inherited a position
+meant for questions and sat left of centre on every desktop — in the preview and
+on the real public form alike. Placement is now a property of the block type,
+named once.
+
