@@ -31,7 +31,7 @@ conversational flow.
 12. [Deployment](#12-deployment)
 13. [Testing](#13-testing)
 14. [Scale, latency and the queries behind them](#14-scale-latency-and-the-queries-behind-them)
-15. [Assumptions and deliberate scope decisions](#15-assumptions-and-deliberate-scope-decisions)
+15. [Assumptions and scope](#15-assumptions-and-scope)
 
 ---
 
@@ -84,7 +84,7 @@ including two partials, so the completion rate and the summary charts have
 something real to show, and both branches already have a submission.
 
 The seed writes **no version history**. A version row records something the
-system did, and the seed did not do those things — see assumption 14. History
+system did, and the seed did not do those things — see §15. History
 starts empty and fills the moment anyone edits a form.
 
 ---
@@ -125,7 +125,7 @@ Open <http://localhost:3000>. The seeded forms are live at
 ### Checks
 
 ```bash
-cd backend  && .venv/bin/python -m pytest tests   # 31 tests
+cd backend  && .venv/bin/python -m pytest tests   # 66 tests
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -224,15 +224,25 @@ drift from what a respondent sees.
 │   │   ├── env.py                   # URL from settings; JSONText → sa.Text()
 │   │   └── versions/
 │   │       ├── 0001_initial_schema.py
-│   │       └── 0002_cascade_answers_on_question_delete.py
-│   ├── tests/
+│   │       ├── 0002_cascade_answers_on_question_delete.py
+│   │       ├── 0003_question_rules.py
+│   │       ├── 0004_form_settings.py
+│   │       ├── 0005_form_versions.py
+│   │       ├── 0006_option_index.py
+│   │       └── 0007_slug_aliases.py
+│   ├── tests/                       # 66 tests
 │   │   ├── conftest.py              # throwaway SQLite per test, injected via DI
-│   │   └── test_api.py              # 10 tests over the schema's invariants
+│   │   ├── test_api.py              # CRUD, publishing, validation, slugs
+│   │   ├── test_logic.py            # branching: paths, cycles, "always"
+│   │   ├── test_versions.py         # snapshots, restore, what the seed may write
+│   │   ├── test_responses_table.py  # search, sort, bulk delete, distributions
+│   │   ├── test_cors.py             # which origins the API answers
+│   │   └── test_packaging.py        # the deploy's dependency invariants
 │   └── app/
 │       ├── main.py                  # build_app() factory: CORS + routers
 │       ├── config.py                # settings from the environment
 │       ├── db.py                    # engine, session dependency, FK pragma
-│       ├── seed.py                  # idempotent demo data
+│       ├── seed.py                  # demo data; refuses to delete responses
 │   ├── scripts/
 │   │   └── profile_queries.py       # statements per endpoint — see §14
 │       ├── models/
@@ -415,9 +425,10 @@ drift from what a respondent sees.
    respondent back to that question and shows the message inline.
 8. On success the server returns the **ending block as data**. The flow moves to
    the `ending` phase and renders it — there is no hardcoded thank-you page.
-9. If the respondent leaves midway having answered something, a
-   `visibilitychange` beacon posts `is_complete: false`. That partial row is what
-   makes the completion rate meaningful.
+9. If the respondent leaves midway having answered something, a `pagehide`
+   beacon posts to `/responses/partial`. That partial row is what makes the
+   completion rate meaningful. It is a separate route because `sendBeacon`
+   cannot preflight, so its body arrives as `text/plain`.
 
 ```
 welcome ──Enter──▶ question[0] ──✓──▶ question[n] ──✓ + POST──▶ ending
@@ -967,10 +978,14 @@ entirely — that origin would then be allowed to call this API from a browser.
 
 ## 13. Testing
 
-`backend/tests/test_api.py` runs the API end to end against a throwaway SQLite
-file, injected through the `get_db` dependency and configured with
-`PRAGMA foreign_keys=ON` so cascades behave as they do in production. Thirty-one tests, each covering one
-invariant the design rests on rather than one function:
+Sixty-six tests run the API end to end against a throwaway SQLite file, injected
+through the `get_db` dependency and configured with `PRAGMA foreign_keys=ON` so
+cascades behave as they do in production.
+
+Each covers an invariant the design rests on rather than a function, which is
+why the table below reads as a list of claims about the system. Several were
+written after a defect got through, and those say so — a test that only passes
+is worth less than one whose failure mode is known.
 
 | Test | Invariant |
 |---|---|
@@ -1143,302 +1158,172 @@ the schema.
 
 ---
 
-## 15. Assumptions and deliberate scope decisions
+## 15. Assumptions and scope
 
-Every shortcut below is a decision, not an omission.
+Everything below is a decision that was made deliberately, with what it costs
+written next to it. Where a shortcut was taken, the section that explains the
+trade-off in full is named.
 
-**1. A single creator, no auth.** The brief permits a default logged-in creator,
-so there is no `users` table and no login. Every form belongs to the one implicit
-creator. Half-built auth would cost hours and earn nothing on the rubric; adding
-it later means a `user_id` foreign key on `forms` and a session dependency in
-`routers/deps.py` — the layering already has the seam for it.
+### What is not built
 
-**2. Per-answer snapshots instead of form versioning.** See decision 2 in §8.
-This is the highest-leverage trade-off in the project and its limits are stated
-there.
+**No authentication, and no `users` table.** The brief permits a default
+logged-in creator, so every form belongs to one implicit account and the chrome
+reads from a single constant in `lib/creator.ts`. Adding real accounts means a
+`user_id` column on `forms` and a session dependency in `routers/deps.py`; the
+layering already has the seam, and nothing else in the app reaches for the
+creator's identity.
 
-**3. libSQL rather than a `.db` file in production.** Serverless filesystems are
-ephemeral. Same dialect, so nothing about the code changes.
+**No file-upload or payment question types.** Both are named in the brief as
+acceptable placeholders. They appear in the add-element modal, greyed out
+alongside the other unsupported types.
 
-**4. Soft-deleted questions are never purged.** A deleted question's row stays
-forever so its answers keep a valid foreign key. At real scale this wants a
-retention job; at this scale it is a few rows.
+**No staged drafts.** The builder autosaves straight to the row the public page
+reads, so an edit to a published form is live the moment it saves. *Publish
+edits* therefore re-validates the form and marks the moment in its history
+rather than promoting anything. A true staged draft — the public page serving
+the last published snapshot while the builder edits a newer one — is the honest
+version of this, and `form_versions` already stores what it would need.
 
-**5. Option labels are not snapshotted.** Only `question_title` and
-`question_type` are. Renaming an *option* after collecting responses changes the
-label shown for old answers. Snapshotting labels too would be the next step.
-
-**6. Choice counts are tallied in Python, not by the database.** `option_ids` is
-a JSON array, so there is nothing for SQL to group on. One query per form brings
-back the selections and they are counted in memory. A join table would let the
-database do it, at the cost of a sixth table; every other statistic in the
-summary is a real SQL aggregate.
-
-**7. Partial responses come from a `visibilitychange` beacon.** Browsers do not
-guarantee an unload beacon fires, so the completion rate is a good indicator, not
-an audit trail.
-
-**8. These panels are intentionally Coming Soon**, each placed where the real
-product puts the feature:
+**These areas are Coming Soon**, each placed where the real product puts the
+feature. None is a dead control: a whole area gets a styled panel, and an
+individual button answers with a toast naming the feature.
 
 | Placement | What is stubbed |
 |---|---|
 | Builder → *Connect* tab | Webhooks, Google Sheets, Slack, Zapier, HubSpot, Airtable |
-| Toolbar → mode pill, Form settings → *Form mode* | Lead qualification, Knowledge quiz and Match quiz. Only Universal is modelled. |
-| Settings panel → *Comments* | Per-block comments. (*Logic* is real — see assumption 11.) |
+| Toolbar → mode pill, Form settings → *Form mode* | Lead qualification, Knowledge quiz, Match quiz. Only Universal is modelled. |
 | Toolbar → *Accessibility check*, *Translations* | A contrast and screen-reader audit; respondent-facing translations |
-| Logic dialog → *Question display*, *Hide answer choices* | Showing or hiding a block, or individual choices, from a condition |
-| Logic dialog → *Calculations* | Scores and variables accumulated across answers |
-| Form settings → *Access & Scheduling* | Scheduling a close date, a response limit, and a password. Open/closed is real. |
-| Form settings → *Language*, *Block references* | Respondent-facing translations; piping earlier answers into later questions |
+| Settings panel → *Comments* | Per-block comments. *Logic* is real. |
 | Settings panel toggles | Randomize, "Other", "None", Vertical alignment — present but inert |
-| Add-element modal | Picture Choice, NPS, Ranking, Matrix, Date, Signature, Payment, File Upload, Scheduler, Statement, Question Group, Redirect, Welcome Screen — shown greyed out in their real groups |
+| Logic dialog → *Question display*, *Hide answer choices*, *Calculations* | Conditional visibility; scores accumulated across answers |
+| Form settings → *Access & Scheduling* | A close date, a response cap, a password. Open/closed is real. |
+| Form settings → *Language*, *Block references* | Translations; piping earlier answers into later questions |
+| Add-element modal | Picture Choice, NPS, Ranking, Matrix, Date, Signature, Payment, File Upload, Scheduler, Statement, Question Group, Redirect — greyed out in their real groups |
 | Add-element modal tabs | *Import questions*, *Create with AI* |
 | Share → *Embed & distribute* | Standard/popup/slider/side-tab embeds, email, QR |
 | Dashboard nav | *Contacts*, *Automations*, *Insights*, *Research Flow* |
-| Results → *Smart Insights*, *Form performance* | AI summaries of open text; views, starts and drop-off per question |
-| Results toolbar | *Spam*, date range, *Filters*, row height, column settings, *Generate test response*, and the Tags column |
-| Dashboard account bar | *Integrations*, *Brand kit*, *View plans*, help, the account switcher |
-| Dashboard sidebar | *Ask Typeform AI* |
-| Workspace header | *Invite*, the workspace `⋯` menu |
-| Row menu | *Workflow*, *Copy to*, *Move to* |
-| Sidebar | *New workspace* |
+| Results → *Smart Insights*, *Form performance* | AI summaries of open text; views, starts, drop-off per question |
+| Results toolbar | *Spam*, date range, *Filters*, row height, column settings, *Generate test response*, Tags |
 
-**Nothing is silently dead.** A whole area — a workspace tab, the Connect screen
-— gets the `ComingSoon` panel. An individual control that would otherwise sit
-there inert stays pressable and answers with a toast naming the feature
-(`Coming soon — Integrations`), because a button that does nothing when pressed
-reads as a bug, while one that says why reads as a decision. Both come from
-`components/ui/ComingSoon.tsx`, so the wording cannot drift.
+### What the data model assumes
 
-The controls wired this way: the account switcher, Integrations, Brand kit, View
-plans, Help and the avatar in the top bar; Research Flow and the plan gems; the
-workspace `⋯`, Invite, New workspace and the AI composer; the per-row Integrations button; Workflow, Copy to and Move to in the
-row menu; the Video segment, Randomize, "Other", "None", Vertical alignment, the
-image slot and Comments in the settings panel; the three unbuilt sections of the
-Logic dialog; and every greyed-out block
-type plus the Import questions and Create with AI tabs in the add-element modal.
+**Answers outlive their questions, by snapshot rather than by versioning.** Each
+answer stores the question's title and type as they were at submit time, and
+questions are soft-deleted rather than removed. This is the highest-leverage
+trade-off in the project; §8, decision 2 states its limits.
 
-**9. The top nav is Content · Connect · Share · Results.** The current product's
-nav reads Content · Workflow · Connect. This keeps the same shape but gives the
-results view a home, which the assignment explicitly asks for.
+**Option labels are not snapshotted.** Only the question's title and type are.
+Renaming an *option* after collecting responses changes the label shown against
+old answers. Snapshotting labels is the natural next step.
 
-**10. The welcome screen is form-level data, not a question row.** It lives in
-`forms.welcome_screen` as JSON, so the builder's selection is a discriminated
-union rather than a question ID, and adding one is a form patch. Endings went the
-other way — they *are* question rows — because a form may have several and they
-need positions; a form has at most one welcome screen.
+**Soft-deleted questions are never purged.** The row stays so its answers keep a
+valid foreign key. At real scale this wants a retention job; at this scale it is
+a handful of rows.
 
-**11. Branching is per-question rules, not a flow-graph editor.** A rule is one
-row: an operator, a compared value and a target. They evaluate in order and the
-first match wins, so the list *is* the precedence — nothing to learn beyond
-reading top to bottom. "Always go to" is the same mechanism rather than a
-separate one: an `always` rule stored last, so the conditional rules above it
-still get their turn and it replaces the fall-through to the next question
-instead of competing with it. That covers skip-ahead and simple forks; what it
-does not model is a rule depending on *several* earlier answers, or arithmetic
-over them.
+**Multi-select counts are tallied in Python.** `option_ids` is a JSON array, so
+there is nothing for SQL to group on: one query per form returns the selections
+and they are counted in memory. A join table would push that into the database
+at the cost of a sixth table. Every other statistic in the summary is a real SQL
+aggregate.
 
-Cycles are refused when a rule is written and again at publish, because deleting
-or reordering blocks can break a set that was valid when authored. The dialog
-also declines to *offer* a target that would close one: a rule may jump only to a
-later block or an ending, so the common way to build a loop is unreachable from
-the UI and the server's refusal is the backstop, not the first line of defence.
+**Presentation lives in JSON; anything enforced gets a column.** The six display
+switches sit in `forms.settings`, but `accepting_responses` is a real column
+because the server checks it on every submission — that is access control, not
+presentation. §8, decision 4.
 
-The Logic dialog holds its edits as a draft until Save — the one place in the
-builder that is not autosaved. Rules are where a half-finished change can strand
-a respondent mid-form, so a Cancel that really discards is worth more here than
-the consistency of saving on every keystroke.
+**Two of the results table's columns are derived, not stored.** Response type
+reads `is_complete`; the Ending column resolves the form's *current* rules
+against the row's answers. That is the opposite call from `question_title`, and
+deliberately: an answer's title records what was asked at the time, while an
+ending is wherever the rules send those answers today.
 
-**12. Nothing in the chrome hardcodes a colour, including a switch knob.** The
-knob takes `--tf-accent-ink` when the track is the accent and `--tf-switch-knob`
-when it is not, so it contrasts in both themes. A hardcoded white knob was
-invisible against the white accent in dark mode — the kind of thing a token layer
-is meant to prevent and a literal colour quietly reintroduces.
+**Version history is whole-form snapshots, coalesced per editing session.** A
+change log would be smaller but is only usable by replaying it, which breaks
+when a block was deleted halfway along. Consecutive edits fold into one entry
+for three minutes; publishing and restoring always start a fresh one. §8,
+decision 5.
 
-**13. A form's theme is four tokens, not a stylesheet.** `forms.theme` holds a
-question colour, a background, a text colour and a font, and `lib/formTheme.ts` turns them into
-overrides of the same `--tf-*` variables every component already reads — which is
-why a theme repaints the whole respondent flow without a single component knowing
-themes exist. A dark background derives its own text, hairline and answer-card
-colours from the background's luminance, because swapping only `--tf-bg` would
-render the form black on black. An explicit text colour overrides that
-derivation, and its muted and faint steps are mixed toward the background with
-`color-mix` rather than picked separately — one choice, three tokens, and they
-cannot drift out of tune or become unreadable against the surface behind them.
+**A retired link is kept, never reused.** Renaming re-mints a form's slug, and
+the old one is retired into `form_slug_aliases` so everything already shared
+still resolves — the public page redirects it to the live address. A retired
+slug counts as taken when minting, so a link can only ever reach the form it was
+minted for.
 
-Each colour offers five presets plus a native colour input for the rest of the
-spectrum. That input is the one control on this panel a browser draws better
-than we would: it is the wheel, the eyedropper and the hex field at once.
+### What the behaviour assumes
+
+**Branching is per-question rules, not a flow-graph editor.** A rule is an
+operator, a compared value and a target; they evaluate in order and the first
+match wins, so the list *is* the precedence. "Always go to" is the same
+mechanism — a catch-all stored last. What this does not model is a rule
+depending on several earlier answers, or arithmetic over them. Cycles are
+refused when a rule is written and again at publish, and the dialog only offers
+targets that cannot close one.
+
+**Required means required *on the path taken*.** The server recomputes which
+questions a respondent actually saw from the answers they sent, because a
+required question on a branch never taken must not block a submission.
+
+**Partial responses are best-effort.** A respondent who leaves mid-form is
+recorded by a `pagehide` beacon, which browsers do not guarantee to deliver. The
+completion rate is a good indicator, not an audit trail. Hiding the page — a
+phone locking, a notification — deliberately does *not* count as leaving, or
+every interruption would invent an abandonment.
+
+**Submitting retries once, and only on a network failure.** A respondent has
+typed the whole form by then, so losing it to one flaky moment is the worst
+failure the app has. A status-0 failure never reached the server and is safe to
+repeat; a 4xx or 5xx is reported as-is.
+
+### What the interface assumes
+
+**The top nav is Content · Connect · Share · Results.** The current product reads
+Content · Workflow · Connect. This keeps the same shape while giving the results
+view a home, which the brief asks for.
+
+**The welcome screen is form-level data, not a question row.** It lives in
+`forms.welcome_screen` as JSON: there is at most one, and it needs no position.
+The builder's selection is a discriminated union rather than a nullable ID.
+
+**A form's theme is four tokens, not a stylesheet.** A question colour, a
+background, a text colour and a font, expressed as overrides of the same
+`--tf-*` variables every component already reads — which is why a theme
+repaints the whole respondent flow without any component knowing themes exist.
 Per-question styling, background images and font uploads are not modelled.
 
-**14. Seed data invents a past for content, but never for the audit trail.**
-`published_at` and every response's `started_at` / `submitted_at` are back-dated
-across the last three weeks. That is scenario content: without it the dashboard's
-"updated" column, the completion rate and the responses table would all show the
-same instant, and none of them would demonstrate anything.
+**The form's surface is independent of the app's light/dark mode.** A form
+belongs to the person filling it in, so the respondent flow and the builder's
+preview declare a full palette of their own instead of inheriting the creator's
+preference.
 
-Version history gets none of that treatment, and the distinction is the point. A
-response is a fact *about the fictional scenario*; a version row is a record of
-something *this system did*. Two earlier attempts at seeded history were both
-fabrications — first invented summaries over one repeated snapshot, so every
-Restore button was a no-op, then real summaries stamped eight days into a past
-this project does not have — and both looked convincing in the panel, which is
-exactly what made them worth deleting. History now starts empty, says so, and
-fills the moment anyone edits a form. Two tests hold that line.
+**The builder's canvas is a scale model of a real screen** — 1440×900, or a
+390×760 phone — rendered at that size and scaled to fit. A card merely sized to
+the pane never gets wide enough to show the offset column a real desktop shows,
+so the preview would disagree with the form it was previewing.
 
-**15. The canvas is a scale model of a screen, not a card on one.** The
-builder's preview renders at a real device size — 1440×900 or 390×760 — and
-scales the result down to fit the pane, laying the block out through the same
-`FormStage` the respondent flow uses.
+**One renderer draws every question, everywhere.** The builder's canvas and the
+public flow mount the same `QuestionRenderer` and the same `FormStage`, differing
+only by props. The preview cannot drift from what a respondent sees, because
+there is nothing to drift.
 
-Two earlier shapes were both wrong. A compact card in the middle of the pane
-never got wide enough to cross the 1024px threshold, so it never showed the
-offset column a real desktop shows. Letting the card simply fill the pane fixed
-that but introduced a subtler version: at the ~1000px the pane actually offers,
-a layout written for a 1440px viewport eats the whole frame, and the preview
-looked cramped in a way the real form never does. Rendering at 1440 and scaling
-is the only shape that is proportionally honest — the question column measures
-443px from the left edge of the model and 446px on the live form.
+### What the platform assumes
 
-Clicks, focus and typing pass through a CSS transform unchanged, so editing in
-place still works at any scale — which was the one real risk in this approach and
-the reason it was worth checking in both frames before committing to it.
+**libSQL in production, a `.db` file locally.** Serverless filesystems are
+ephemeral, so a plain SQLite file cannot persist. Same dialect either way, so
+models, migrations and the seed script are identical in both.
 
-**16. Two of the results table's columns are derived, not stored.** Response
-type reads `is_complete`; the Ending column resolves the form's *current* rules
-against the answers on the row.
+**SQLite is the first thing to change under load.** Writes serialise. §14
+measures where the time actually goes — roughly 135 ms of any request is the
+network and the function invocation, and about 4 ms is the database — and says
+what breaks first at each level of traffic.
 
-That is the opposite call from `question_title`, and deliberately so. An answer's
-title is snapshotted because it records what was asked at the time — changing the
-question later must not rewrite history. An ending is not a historical fact about
-the submission; it is where the rules send that set of answers, and an author who
-rewires their branching wants the column to follow. Storing it would be a second
-copy that silently went stale.
+**Seed data invents a past for content, never for the audit trail.**
+`published_at` and every response timestamp are spread across recent weeks, so
+the dashboard, the completion rate and the summary charts have something real to
+show. Version history gets none of that treatment: a version row records
+something the system did, and the seed did not do it. History starts empty and
+fills the moment anyone edits a form.
 
-Search matches `display_value`, the denormalised rendered string already on each
-answer row — one `ILIKE` over one column finds "Cricket" whether it was typed,
-picked from a list or rated. The box keeps two values: what it shows, and what
-the server is asked for on a 300ms debounce. Querying per keystroke sent
-fourteen requests for a seven-letter word, and they could land out of order. Bulk delete is a POST with a body rather than a
-DELETE per row, because the IDs come from a checkbox column: one round trip per
-row would let a bulk delete half-fail in a way the table could not show. It is
-scoped to the form, so a stale page cannot reach another form's data by guessing.
-
-**17. Each question in the summary is drawn the way its own type reads.** A
-rating becomes a histogram over its whole scale, a yes/no a donut, a choice list
-ranked bars, open text the verbatims themselves. Colour comes from the same
-block palette as that question's icon everywhere else, so a card is
-recognisable before it is read.
-
-The scale keeps its empty buckets. "Nobody gave us a 1" is a finding, and a
-histogram that closed the gap would hide it — which is why `distribution` is
-built server-side from the question's `max_rating` rather than from the values
-that happen to have been answered. A number question has no scale to fill in, so
-it reports only what came back.
-
-Four SVG shapes and some divs rather than a charting library. The figures are
-simple enough not to earn a dependency, and every one takes its colours from the
-token layer so the panel themes like everything else — the first thing a chart
-library takes away. They animate from empty on mount and hold still under
-`prefers-reduced-motion`.
-
-**18. Publishing never unpublishes, and edits are live before you press it.**
-The builder's autosave writes to the same row the public page reads, so a change
-to a published form is live the moment the save lands. There is no staged draft
-to promote.
-
-That leaves *Publish edits* with a real but narrower job: it re-validates the
-form — the rules still have to be loop-free, and the form still has to have an
-answerable question — and marks the moment in the version history. What it does
-not do is take the form down. It used to: the button was a publish/unpublish
-toggle wearing the label of the real product's button, so pressing "Publish
-edits" on a live form unpublished it. Unpublishing now lives on the Share tab,
-beside the sentence that says whether the form is live, because taking a form
-offline is a deliberate act rather than the far half of a toggle.
-
-A proper staged draft — the public page serving the last published snapshot
-while the builder edits a newer one — is the honest version of this, and
-`form_versions` already stores what it would need. It is not built.
-
-**19. Design is a panel mode, not a selection.** Opening the design panel used
-to *select* it, in the same union that holds the welcome screen and the
-questions — which meant opening it deselected the block, and the canvas showed
-"Select a block to edit it" while you changed the colours. Nothing to see them
-on, which is the one thing a colour picker needs.
-
-The block stays selected now and the panel simply swaps, so a colour lands on
-the block you were looking at. The duplicate entry point in the left rail is
-gone with it: a *Design → Colours & font* row that did the same thing as the
-toolbar button beside it.
-
-**20. Submitting is the one request that must not be lost, and it was.**
-
-Three faults met on a phone. The drop-out beacon and the real submit shared a
-single `submitted` flag, so once a phone had been backgrounded for a moment —
-a notification, the screen lock, an app switch — pressing Submit returned early
-and did nothing at all, for the rest of the session. Desktops rarely background
-a tab mid-form, which is exactly why it never showed up there.
-
-The beacon also never worked. `navigator.sendBeacon` is the only request a
-browser reliably finishes while unloading a page, and it cannot trigger a CORS
-preflight, so its content type must be one of three safelisted values — none of
-them `application/json`. Sent as `text/plain` the main route answered `422`, so
-every partial response was silently dropped, cross-origin, always. It now posts
-to `/responses/partial`, a route that reads the body whatever the beacon
-labelled it and can only ever store `is_complete=False`; loosening the main
-route instead would have weakened the one endpoint real answers arrive on.
-
-And the beacon listened for `visibilitychange`. Hiding is not leaving: a phone
-fires it constantly, so every notification would have invented an abandonment
-and then double-counted the respondent when they came back and finished.
-`pagehide` is the event that means the page is actually going away.
-
-Around that, the submit itself gained a 20-second timeout and one retry — but
-only on a status-0 failure, where the request never reached the server and there
-is nothing to duplicate. A 4xx or 5xx is reported as-is. The offline message a
-respondent sees is now about their connection rather than about whether a
-backend is running, which is not a question they can act on.
-
-
-
-That sharing is also what fixed the placement bug underneath it. Questions sit
-in a column starting about a quarter of the way across a wide screen; welcome,
-ending and closed screens are centred at every width. The offset used to live on
-the wrapper shared by all four, so the three centred screens inherited a position
-meant for questions and sat left of centre on every desktop — in the preview and
-on the real public form alike. Placement is now a property of the block type,
-named once.
-
-**21. Renaming re-mints the link, and every old one still works.**
-A form's public slug is derived from its title, so renaming a published form
-gives it a link that reads like its current name rather than the name it
-happened to have when it was first published.
-
-The obvious cost is that everything already shared — a message, an email, a QR
-code — would point at a 404. So the old slug is *retired* rather than discarded:
-`form_slug_aliases` keeps it, `get_published_form` falls back to it, and the
-form comes back carrying its **current** slug. The public page compares the two
-and redirects, so an old link lands on the live address instead of serving the
-same form at two URLs.
-
-Three consequences worth stating:
-
-- A retired slug counts as taken when minting a new one, so a link can only ever
-  resolve to the form it was minted for. The test pins the random suffix to
-  force the collision rather than hoping for one.
-- A submission posted to a retired slug is accepted, so someone mid-form when a
-  rename lands can still finish.
-- Aliases cascade with the form, so deleting a form takes its old links with it
-  and they 404 again.
-
-The fallback query runs only on a miss, so a live link is still one round trip.
-Unpublishing is a different case and behaves differently: the slug is kept
-outright, so a form taken offline and republished keeps the link it had.
-
-Naming also moved to the front of creation. A form is named in a dialog before
-it exists, rather than being created as "Untitled form" and renamed later, which
-is how a workspace ends up with three of them. Both dialogs are the app's own —
-`window.prompt` drew the old one in the browser's chrome, with the wrong
-typeface, the wrong buttons and, in some browsers, the option to suppress it
-entirely.
+**Re-seeding refuses to destroy collected responses.** The script rebuilds the
+forms it owns, which cascades — correct on a fresh database and data loss on a
+live one. It counts what it would delete and stops unless `--force` says
+otherwise.

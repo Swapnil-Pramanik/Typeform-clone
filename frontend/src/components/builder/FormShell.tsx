@@ -73,7 +73,7 @@ export function FormShell({ formId, headerSlot, toolbar, children }: FormShellPr
    *
    * On an already-published form this re-validates the rules and marks the
    * moment in the form's history. Edits themselves are live as soon as the
-   * autosave lands — see the README's assumption 18.
+   * autosave lands — see the README's §15, "No staged drafts".
    */
   const onPublish = async () => {
     try {

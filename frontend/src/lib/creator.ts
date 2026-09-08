@@ -1,7 +1,7 @@
 /**
  * The single seeded creator.
  *
- * There is no auth and no users table (README §14), so the account chrome reads
+ * There is no auth and no users table (README §15), so the account chrome reads
  * from one constant rather than a session. Adding real accounts later means
  * replacing this module with a `useSession()` hook — nothing else in the
  * dashboard reaches for the creator's identity.
